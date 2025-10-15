@@ -1,3 +1,0 @@
-git add fpdf/*
-git commit -m "Agrego fpdf.php y carpeta fonts"
-git push
