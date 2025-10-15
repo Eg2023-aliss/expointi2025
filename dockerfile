@@ -7,7 +7,8 @@ COPY . /var/www/html/
 # Corrige propietarios/permiso para que Apache (www-data) pueda leer/ejecutar
 RUN chown -R www-data:www-data /var/www/html \
  && chmod -R 755 /var/www/html \
+ && rm /var/www/html/fpdf_full.zip \
  # Asegura que Apache busque index.php antes que index.html (opcional)
-&& echo "DirectoryIndex ax_index.php login_index.php registro_index.php carnet_index.php fpdf_index.php  " >> /etc/apache2/apache2.conf
+&& echo "DirectoryIndex ax_index.php login_index.php registro_index.php carnet_index.php   " >> /etc/apache2/apache2.conf
 
 EXPOSE 80
