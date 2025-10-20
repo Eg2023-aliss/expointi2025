@@ -1,6 +1,6 @@
 <?php
 ob_start();
-require('fpdf/fpdf.php');
+require('fpdf/fpdf_index.php');
 
 // =======================================
 // 🔹 CONFIGURACIÓN DE CONEXIÓN DUAL
