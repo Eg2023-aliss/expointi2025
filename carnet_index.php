@@ -8,7 +8,7 @@ require('fpdf/fpdf.php');
 
 // Base local
 $db_local = [
-    'host' => 'localhost',
+    'URL' => 'jdbc:postgresql://localhost:5432/postgres',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
