@@ -10,7 +10,7 @@ require('fpdf/fpdf_index.php');
 if (!isset($_SESSION['usuario_id'])) {
   $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
   $baseUrl .= "://".$_SERVER['HTTP_HOST'];
-  header("Location: $baseUrl/login_index.php");
+  header("Location: $baseUrl/login.php");
   exit;
 }
 
@@ -25,7 +25,7 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-  'URL' => 'jdbc:postgresql://localhost:5432/postgres',
+  'host' => 'localhost',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
@@ -87,37 +87,65 @@ function fetchCurriculumById($id_empleado) {
   return false;
 }
 
-// ---------- DATOS EMPLEADOS ----------
-$empleados = [
-  'Dirección y Administración General' => [
-    ['id'=>3,'nombre'=>'Patricia Vásquez León','correo'=>'patricia.vasquez@empresa.com','puesto'=>'Directora General (CEO)','fecha'=>'2017-11-01'],
-    ['id'=>2,'nombre'=>'Fernando Morales Díaz','correo'=>'fernando.morales@empresa.com','puesto'=>'Director de Tecnología (CTO)','fecha'=>'2018-02-20'],
-    ['id'=>1,'nombre'=>'Carlos Hernández López','correo'=>'carlos.hernandez@empresa.com','puesto'=>'Director de Operaciones (COO)','fecha'=>'2020-03-15'],
-  ],
-'Finanzas y Administración' => [
-  ['id'=>4,'nombre'=>'Ana María Torres','correo'=>'ana.torres@empresa.com','puesto'=>'Gerente de Finanzas','fecha'=>'2019-06-01'],
-['id'=>5,'nombre'=>'Ricardo Gómez','correo'=>'ricardo.gomez@empresa.com','puesto'=>'Analista Financiero','fecha'=>'2021-07-22'],
-['id'=>6,'nombre'=>'Silvia Ramírez','correo'=>'silvia.ramirez@empresa.com','puesto'=>'Auxiliar Contable','fecha'=>'2022-08-25'],
-['id'=>7,'nombre'=>'Karen López','correo'=>'karen.lopez@empresa.com','puesto'=>'Contadora Junior','fecha'=>'2023-03-11'],
-['id'=>8,'nombre'=>'David Herrera','correo'=>'david.herrera@empresa.com','puesto'=>'Pasante','fecha'=>'2023-07-20']
-],
-'Recursos Humanos' => [
-  ['id'=>9,'nombre'=>'José Martínez','correo'=>'jose.martinez@empresa.com','puesto'=>'Gerente RRHH','fecha'=>'2021-01-10'],
-['id'=>10,'nombre'=>'Daniel Pérez','correo'=>'daniel.perez@empresa.com','puesto'=>'Reclutador','fecha'=>'2021-09-30'],
-['id'=>11,'nombre'=>'Gabriela Cruz','correo'=>'gabriela.cruz@empresa.com','puesto'=>'Auxiliar RRHH','fecha'=>'2022-10-05'],
-['id'=>12,'nombre'=>'Laura Torres','correo'=>'laura.torres@empresa.com','puesto'=>'Psicóloga','fecha'=>'2023-01-17'],
-['id'=>13,'nombre'=>'Mario Sánchez','correo'=>'mario.sanchez@empresa.com','puesto'=>'Asistente RRHH','fecha'=>'2023-05-29']
-],
-'Ventas y Atención Comercial' => [
-  ['id'=>14,'nombre'=>'Luis Castillo','correo'=>'luis.castillo@empresa.com','puesto'=>'Gerente Comercial','fecha'=>'2021-04-12'],
-['id'=>15,'nombre'=>'Marta López','correo'=>'marta.lopez@empresa.com','puesto'=>'Coordinadora Ventas','fecha'=>'2022-05-18'],
-['id'=>16,'nombre'=>'Andrea Fuentes','correo'=>'andrea.fuentes@empresa.com','puesto'=>'Ejecutiva Ventas','fecha'=>'2023-02-10'],
-['id'=>17,'nombre'=>'Óscar Molina','correo'=>'oscar.molina@empresa.com','puesto'=>'Asesor Comercial','fecha'=>'2023-06-18']
-],
-'Infraestructura y Redes' => [
-  ['id'=>18,'nombre'=>'Jorge Ramírez','correo'=>'jorge.ramirez@empresa.com','puesto'=>'Gerente Redes','fecha'=>'2016-09-15']
-]
+
+// ---------- DATOS EMPLEADOS DESDE LA BD ----------
+$pdo = getPDO(); // Conexión
+
+// ---------- CONSULTAR EMPLEADOS ----------
+$stmt = $pdo->query("SELECT * FROM empleados ORDER BY nombre_completo"); // Orden por nombre
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ---------- FUNCIÓN PARA DETERMINAR ÁREA SEGÚN PUESTO ----------
+function getAreaByPuesto($puesto) {
+  $puesto_lower = strtolower($puesto);
+
+  if (stripos($puesto_lower, 'director') !== false || stripos($puesto_lower, 'general') !== false) {
+    return 'Dirección y Administración General';
+  } elseif (stripos($puesto_lower, 'finanzas') !== false || stripos($puesto_lower, 'conta') !== false) {
+    return 'Finanzas y Administración';
+  } elseif (stripos($puesto_lower, 'rrhh') !== false || stripos($puesto_lower, 'recursos') !== false) {
+    return 'Recursos Humanos';
+  } elseif (stripos($puesto_lower, 'ventas') !== false || stripos($puesto_lower, 'comercial') !== false) {
+    return 'Ventas y Atención Comercial';
+  } elseif (stripos($puesto_lower, 'redes') !== false || stripos($puesto_lower, 'infraestructura') !== false) {
+    return 'Infraestructura y Redes';
+  } else {
+    return 'Otros';
+  }
+}
+
+// ---------- AGRUPAR POR ÁREA / PUESTO ----------
+$areas = [
+  'Dirección y Administración General',
+'Finanzas y Administración',
+'Recursos Humanos',
+'Ventas y Atención Comercial',
+'Infraestructura y Redes',
+'Otros'
 ];
+
+// Inicializar array con todas las áreas
+$empleados = [];
+foreach ($areas as $a) {
+  $empleados[$a] = [];
+}
+
+// Agrupar todos los empleados por área
+foreach ($rows as $row) {
+  $area = getAreaByPuesto($row['puesto']);
+  $empleados[$area][] = [
+    'id' => $row['id'],
+    'nombre' => $row['nombre_completo'],
+    'correo' => $row['correo'],
+    'puesto' => $row['puesto'],
+    'fecha' => $row['fecha_contratacion']
+  ];
+}
+
+// 🔹 Para los nuevos empleados que se registren:
+// siempre se consultará de nuevo $rows y se ejecutará el mismo agrupamiento,
+// así que cualquier nuevo empleado agregado aparecerá automáticamente en la lista por área.
+
 
 // ---------- DESCARGAR CARNET ----------
 if (($_GET['action'] ?? '') === 'carnet') {
@@ -505,7 +533,7 @@ table tr:hover { background: rgba(255,255,255,0.1); }
   background: #ffffff;
   color: #003366;
   border: none;
-  padding: 8px 15px;
+  padding: 5px 15px;
   border-radius: 25px;
   cursor: pointer;
   font-weight: 500;
@@ -610,7 +638,19 @@ height: 350px; /* tamaño más compacto */
 /* Colores de eventos */
 .fc-event[style*="background-color: #2ecc71"] { background-color: #2ecc71 !important; }
 .fc-event[style*="background-color: #e74c3c"] { background-color: #e74c3c !important; }
-
+.btn-small {
+  background: #1f3b73;
+  color: white;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-left: 10px;
+  text-decoration: none;
+  transition: 0.3s;
+}
+.btn-small:hover {
+  background: #2c56b1;
+}
 </style>
 </head>
 <body>
@@ -619,7 +659,7 @@ height: 350px; /* tamaño más compacto */
 <div class="navbar">
 <a href="login.php">Login</a>
 <a href="empleados_index.php">Empleados</a>
-<a href="formulario.php">Registrar Encargado</a>
+
 <a href="login.php">Salir</a>
 </div>
 
@@ -668,7 +708,9 @@ let calendar, empleadoActual = 0;
 async function mostrarArea(area){
   if(!area) return;
   document.getElementById('empleadosArea').style.display='block';
-  document.getElementById('tituloArea').textContent='Empleados del área: '+area;
+  // Aquí añadí solo la inserción del botón solicitado (para todas las áreas)
+  tituloArea.innerHTML = 'Empleados del área: ' + area +
+  ' <a href="formulario.php" class="btn-small">Registrar Encargado</a>';
   try {
     const res=await fetch('?action=list&area='+encodeURIComponent(area));
     const data=await res.json();
@@ -686,7 +728,8 @@ async function mostrarArea(area){
     <td>
     <button class="btn" onclick="downloadCarnet(${e.id})">Carnet</button>
     <button class="btn" onclick="curriculum(${e.id})">Curriculum</button>
-    <button class="btn" onclick="verAsistencia(${e.id})">📅 Ver Asistencia</button>
+    <button class="btn" onclick="verAsistencia(${e.id})">Asistencia</button>
+
     </td>
     </tr>`).join('');
   } catch(err) {
