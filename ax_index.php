@@ -10,7 +10,7 @@ require('fpdf/fpdf_index.php');
 if (!isset($_SESSION['usuario_id'])) {
   $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
   $baseUrl .= "://".$_SERVER['HTTP_HOST'];
-  header("Location: $baseUrl/login.php");
+  header("Location: $baseUrl/login_index.php");
   exit;
 }
 
