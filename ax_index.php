@@ -8,9 +8,12 @@ require('fpdf/fpdf_index.php');
 
 // 🔐 Verificar sesión
 if (!isset($_SESSION['usuario_id'])) {
-  header("Location: http://localhost/login.php");
+  $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+  $baseUrl .= "://".$_SERVER['HTTP_HOST'];
+  header("Location: $baseUrl/login.php");
   exit;
 }
+
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
