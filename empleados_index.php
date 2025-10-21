@@ -3,165 +3,61 @@
 // CONFIGURACIÓN DE BASES DE DATOS
 // =============================================================
 
-// Detecta si se está ejecutando en Render (Render define la variable de entorno RENDER)
+// Detectar si el entorno es Render (Render define la variable de entorno RENDER=true)
 $isRender = getenv('RENDER') === 'true';
 
-// Base local (para ejecutar en tu PC)
+// Base local (para desarrollo en tu PC)
 $db_local = [
-    'host' => 'localhost',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres',
-    'pass' => '12345',
-    'sslmode' => 'disable'
+  'host' => 'localhost',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345',
+'sslmode' => 'disable'
 ];
 
 // Base remota (Supabase o Render PostgreSQL)
+// ⚠️ Asegúrate de poner los valores correctos desde tu panel de Supabase
 $db_remota = [
-    // ⚠️ IMPORTANTE: Usa el host "db.xxx.supabase.co", NO el "pooler"
-    'host' => 'db.aws-1-us-east-2.supabase.co',
-    'port' => '5432',
-    'dbname' => 'postgres3',
-    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz',
-    'sslmode' => 'require'
+  'host' => 'db.xxxxx.supabase.co',        // <-- cámbialo por tu host real
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres.xxxxxxx',            // <-- cámbialo por tu usuario real
+'pass' => 'TuContraseñaReal',            // <-- cámbialo por tu contraseña real
+'sslmode' => 'require'
 ];
 
-// Selecciona la conexión principal según el entorno
-$db_config = $isRender ? $db_remota : $db_local;
-
 // =============================================================
-// FUNCIÓN PARA CONECTAR A LA BASE DE DATOS
+// FUNCIÓN PARA CONECTAR A UNA BASE DE DATOS
 // =============================================================
 function conectarDB($config)
 {
-    $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};sslmode={$config['sslmode']}";
-    try {
-        $pdo = new PDO($dsn, $config['user'], $config['pass'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]);
-        return $pdo;
-    } catch (PDOException $e) {
-        echo "<p style='color:red'>❌ Error de conexión a {$config['host']}: {$e->getMessage()}</p>";
-        return null;
-    }
+  $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};sslmode={$config['sslmode']}";
+  try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    return $pdo;
+  } catch (PDOException $e) {
+    echo "<p style='color:red'>❌ Error de conexión a {$config['host']}: {$e->getMessage()}</p>";
+    return null;
+  }
 }
 
 // =============================================================
-// ESTABLECER CONEXIONES
+// ESTABLECER CONEXIONES SEGÚN EL ENTORNO
 // =============================================================
-$pdo_local = conectarDB($db_local);
-$pdo_remota = conectarDB($db_remota);
+$pdo_local = null;
+$pdo_remota = null;
 
-// =============================================================
-// FUNCIÓN PARA CONSULTAR EMPLEADOS
-// =============================================================
-function obtenerEmpleados($pdo)
-{
-    if (!$pdo) return [];
-    try {
-        $stmt = $pdo->query("SELECT * FROM empleados ORDER BY id_empleado ASC");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        echo "<p style='color:red'>❌ Error en consulta: {$e->getMessage()}</p>";
-        return [];
-    }
-}
-
-// =============================================================
-// FUNCIÓN PARA INSERTAR/ACTUALIZAR EN AMBAS BASES
-// =============================================================
-function sincronizarEmpleado($pdo_local, $pdo_remota, $empleado)
-{
-    if (!$pdo_local && !$pdo_remota) return;
-
-    $sql = "INSERT INTO empleados (id_empleado, nombre_completo, dui, telefono, correo)
-            VALUES (:id, :nombre, :dui, :telefono, :correo)
-            ON CONFLICT (id_empleado) DO UPDATE
-            SET nombre_completo = EXCLUDED.nombre_completo,
-                dui = EXCLUDED.dui,
-                telefono = EXCLUDED.telefono,
-                correo = EXCLUDED.correo";
-
-    // Ejecutar en ambas conexiones si existen
-    foreach ([$pdo_local, $pdo_remota] as $pdo) {
-        if ($pdo) {
-            try {
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    ':id' => $empleado['id_empleado'],
-                    ':nombre' => $empleado['nombre_completo'],
-                    ':dui' => $empleado['dui'] ?? null,
-                    ':telefono' => $empleado['telefono'] ?? null,
-                    ':correo' => $empleado['correo'] ?? null
-                ]);
-            } catch (PDOException $e) {
-                echo "<p style='color:orange'>⚠️ No se pudo sincronizar en " .
-                     htmlspecialchars($pdo->getAttribute(PDO::ATTR_CONNECTION_STATUS)) .
-                     ": {$e->getMessage()}</p>";
-            }
-        }
-    }
-}
-
-// =============================================================
-// CONSULTAR EMPLEADOS
-// =============================================================
-$empleados_local = obtenerEmpleados($pdo_local);
-$empleados_remotos = obtenerEmpleados($pdo_remota);
-
-// =============================================================
-// MOSTRAR DATOS
-// =============================================================
-echo "<h2>📡 Empleados desde la BASE REMOTA</h2>";
-
-if (empty($empleados_remotos)) {
-    echo "<p>No se encontraron empleados en la base remota.</p>";
+if ($isRender) {
+  // En Render → solo usa la base remota
+  $pdo_remota = conectarDB($db_remota);
 } else {
-    echo "<table border='1' cellpadding='5'>";
-    echo "<tr><th>ID</th><th>Nombre Completo</th><th>DUI</th><th>Teléfono</th><th>Correo</th></tr>";
-    foreach ($empleados_remotos as $emp) {
-        echo "<tr>
-                <td>{$emp['id_empleado']}</td>
-                <td>{$emp['nombre_completo']}</td>
-                <td>{$emp['dui']}</td>
-                <td>{$emp['telefono']}</td>
-                <td>{$emp['correo']}</td>
-              </tr>";
-    }
-    echo "</table>";
+  // En entorno local → usa ambas
+  $pdo_local = conectarDB($db_local);
+  $pdo_remota = conectarDB($db_remota);
 }
-
-echo "<hr><h2>💻 Empleados desde la BASE LOCAL</h2>";
-
-if (empty($empleados_local)) {
-    echo "<p>No se encontraron empleados en la base local.</p>";
-} else {
-    echo "<table border='1' cellpadding='5'>";
-    echo "<tr><th>ID</th><th>Nombre Completo</th><th>DUI</th><th>Teléfono</th><th>Correo</th></tr>";
-    foreach ($empleados_local as $emp) {
-        echo "<tr>
-                <td>{$emp['id_empleado']}</td>
-                <td>{$emp['nombre_completo']}</td>
-                <td>{$emp['dui']}</td>
-                <td>{$emp['telefono']}</td>
-                <td>{$emp['correo']}</td>
-              </tr>";
-    }
-    echo "</table>";
-}
-
-// =============================================================
-// SINCRONIZACIÓN AUTOMÁTICA (opcional)
-// =============================================================
-// Si quieres sincronizar todos los empleados locales con la nube automáticamente:
-if (!empty($empleados_local) && $pdo_remota) {
-    foreach ($empleados_local as $emp) {
-        sincronizarEmpleado($pdo_local, $pdo_remota, $emp);
-    }
-    echo "<p style='color:green'>✅ Sincronización completada entre bases.</p>";
-}
-
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
   global $db_config_local, $db_config_cloud;
