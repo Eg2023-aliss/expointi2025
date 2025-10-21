@@ -27,7 +27,7 @@ $db_cloud = [
 try {
     $conexion = (isset($_GET['origen']) && $_GET['origen'] === 'cloud') ? $db_cloud : $db_local;
 
-    $dsn = "pgsql:host={$conexion['host']};port={$conexion['port']};dbname={$conexion['dbname']}";
+    $dsn = "pgsql:URL={$conexion['URL']};port={$conexion['port']};dbname={$conexion['dbname']}";
     $pdo = new PDO($dsn, $conexion['user'], $conexion['pass']);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
