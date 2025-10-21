@@ -6,28 +6,33 @@ require('fpdf/fpdf_index.php');
 // 🔹 CONFIGURACIÓN DE CONEXIÓN DUAL
 // =======================================
 
-// Base local
+// Base de datos local
 $db_local = [
-    'URL' => 'jdbc:postgresql://localhost:5432/postgres',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
 ];
 
-$db_cloud = [
-    'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '6543',  // Pooler de transacciones recomendado
-'dbname' => 'postgres',
+// Base de datos en la nube (Supabase o Render)
+$db_config_cloud = [
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
+'port' => '5432',
+'dbname' => 'postgres3',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
 'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
-// Conexión dinámica según origen
+
+// =======================================
+// 🔹 CONEXIÓN DINÁMICA SEGÚN ORIGEN
+// =======================================
 try {
     $conexion = (isset($_GET['origen']) && $_GET['origen'] === 'cloud') ? $db_cloud : $db_local;
 
-    $dsn = "pgsql:URL={$conexion['URL']};port={$conexion['port']};dbname={$conexion['dbname']}";
+    // ✅ DSN correcto para PostgreSQL con PDO
+    $dsn = "pgsql:host={$conexion['host']};port={$conexion['port']};dbname={$conexion['dbname']}";
     $pdo = new PDO($dsn, $conexion['user'], $conexion['pass']);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
