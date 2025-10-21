@@ -6,15 +6,6 @@ require('fpdf/fpdf_index.php');
 // 🔹 CONFIGURACIÓN DE CONEXIÓN DUAL
 // =======================================
 
-// Base de datos local
-$db_local = [
-    'host' => 'localhost',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres',
-    'pass' => '12345'
-];
-
 // Base de datos en la nube (Supabase o Render)
 $db_config_cloud = [
   'host' => 'aws-1-us-east-2.pooler.supabase.com',
@@ -23,7 +14,14 @@ $db_config_cloud = [
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
 'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
-
+// Base de datos local
+$db_local = [
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
+];
 
 // =======================================
 // 🔹 CONEXIÓN DINÁMICA SEGÚN ORIGEN
