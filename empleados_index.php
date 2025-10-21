@@ -8,7 +8,7 @@ require('fpdf/fpdf.php');
 
 // 🔐 Verificar sesión
 if (!isset($_SESSION['usuario_id'])) {
-  header("Location: http://localhost/login.php");
+  header("Location: pages/login.php");
   exit;
 }
 
