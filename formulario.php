@@ -7,22 +7,22 @@ error_reporting(E_ALL);
 // 🔹 Configuración de conexiones
 $db_config_cloud = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz'
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
-    'host' => 'localhost',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres',
-    'pass' => '12345'
+        'host' => 'localhost',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345'
 ];
 
 // 🔹 Función para conectarse a PostgreSQL (local o cloud)
-function getPDO($cfg) {
+function getPDO($cfg = null) {
     $ssl = '';
     if (str_contains($cfg['host'], 'supabase.com')) {
         $ssl = ';sslmode=require';
@@ -34,7 +34,7 @@ function getPDO($cfg) {
     ]);
 }
 
-// 🔹 Función para ejecutar la misma acción en ambas bases
+// 🔹 Función para ejecutar en ambas BD
 function runBoth($callback) {
     global $db_config_local, $db_config_cloud;
     try {
@@ -79,9 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 🔹 Generar ID único global para empleado
-    $id_empleado_global = hexdec(substr(uniqid(), 0, 8));
+    $id_empleado_global = hexdec(substr(uniqid(), 0, 8)); // valor numérico único
 
-    // 🔹 Insertar en ambas BD usando runBoth()
+    // 🔹 Insertar en ambas BD
     runBoth(function($pdo) use (
         $id_empleado_global, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
         $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ) {
         $pdo->beginTransaction();
         try {
-            // Insertar en empleados
+            // Insertar en empleados usando ID único
             $stmt1 = $pdo->prepare("INSERT INTO empleados (id, nombre_completo, dui, nit, correo, puesto, fecha_contratacion, telefono)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt1->execute([$id_empleado_global, $nombre, $dui, uniqid('NIT'), $correo, $puesto, $fecha_contratacion, $telefono]);
@@ -120,8 +120,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="es">
