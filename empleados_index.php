@@ -9,39 +9,49 @@ require('fpdf/fpdf.php');
 
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
+// ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $isRender = getenv('RENDER') === 'true';
 
-if ($isRender) {
-    // usar la base remota
-    $db = [
-        'host' => 'aws-1-us-east-2.pooler.supabase.com',
-        'port' => '5432',
-        'dbname' => 'postgres3',
-        'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-        'pass' => 'Zv2sW23OhBVM5Tkz',
-        'sslmode' => 'require'
-    ];
-} else {
-    // usar la base local solo en tu PC
-    $db = [
-        'host' => 'localhost',
-        'port' => '5432',
-        'dbname' => 'postgres',
-        'user' => 'postgres',
-        'pass' => '1234',
-        'sslmode' => 'disable'
-    ];
-}
+// Configuración de base de datos local
+$db_config_local = [
+  'host' => 'localhost',
+  'port' => '5432',
+  'dbname' => 'postgres',
+  'user' => 'postgres',
+  'pass' => '1234',
+  'sslmode' => 'disable'
+];
+
+// Configuración de base de datos en Render / Supabase
+$db_config_cloud = [
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
+  'port' => '5432',
+  'dbname' => 'postgres3',
+  'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+  'pass' => 'Zv2sW23OhBVM5Tkz',
+  'sslmode' => 'require'
+];
+
+// Según entorno, elegimos la conexión principal
+$db_config = $isRender ? $db_config_cloud : $db_config_local;
 
 // ---------- FUNCIONES ----------
 function getPDO($cfg = null) {
-  // Si se pasa $cfg, úsalo; si no, usa $db_config global
   global $db_config;
   $use = $cfg ?? $db_config;
-  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']}";
-  return new PDO($dsn, $use['user'], $use['pass'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-  ]);
+
+  if (empty($use['host']) || empty($use['dbname'])) {
+    throw new Exception("⚠️ Configuración de base de datos incompleta");
+  }
+
+  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']};sslmode={$use['sslmode']}";
+  try {
+    return new PDO($dsn, $use['user'], $use['pass'], [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+  } catch (PDOException $e) {
+    die("❌ Error de conexión: " . $e->getMessage());
+  }
 }
 
 function runBoth($callback) {
