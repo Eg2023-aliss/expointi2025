@@ -4,7 +4,7 @@ ob_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-require('fpdf/fpdf_index.php');
+require('fpdf/fpdf.php');
 
 // 🔐 Verificar sesión
 if (!isset($_SESSION['usuario_id'])) {
