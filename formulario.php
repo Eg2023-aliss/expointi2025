@@ -7,22 +7,22 @@ error_reporting(E_ALL);
 // 🔹 Configuración de conexiones
 $db_config_cloud = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz'
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+    'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
- 'URL' => 'jdbc:postgresql://localhost:5432/postgres',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
 ];
 
 // 🔹 Función para conectarse a PostgreSQL (local o cloud)
-function getPDO($cfg = null) {
+function getPDO($cfg) {
     $ssl = '';
     if (str_contains($cfg['host'], 'supabase.com')) {
         $ssl = ';sslmode=require';
@@ -73,13 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 🔸 Imagen (si se sube)
     $imagen = null;
-    if (!empty($_FILES['imagen']['tmp_name'])) {
+    if (!empty($_FILES['imagen']['tmp_name']) && is_uploaded_file($_FILES['imagen']['tmp_name'])) {
         $imagenData = file_get_contents($_FILES['imagen']['tmp_name']);
         $imagen = base64_encode($imagenData);
     }
 
-    // 🔹 Generar ID único global para empleado
-    $id_empleado_global = hexdec(substr(uniqid(), 0, 8)); // valor numérico único
+    // 🔹 Generar ID único global para empleado (compatible con BIGINT)
+    $id_empleado_global = hexdec(substr(uniqid(), 0, 12));
 
     // 🔹 Insertar en ambas BD
     runBoth(function($pdo) use (
@@ -120,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="es">
