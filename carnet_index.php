@@ -23,24 +23,37 @@ $db_remota = [
 ];
 
 // =======================
+// Función para crear conexión PDO
+// =======================
+function connectPDO($dbConfig) {
+    try {
+        $dsn = "pgsql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']}";
+        if (!empty($dbConfig['sslmode'])) {
+            $dsn .= ";sslmode={$dbConfig['sslmode']}";
+        }
+        $pdo = new PDO($dsn, $dbConfig['user'], $dbConfig['pass']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return $pdo;
+    } catch (PDOException $e) {
+        die("❌ Error de conexión a {$dbConfig['host']}: " . $e->getMessage());
+    }
+}
+
+// =======================
 // Detectar entorno
 // =======================
 $isRender = getenv('RENDER') === 'true';
 
 if ($isRender) {
-    // Conexión remota con pg_connect (Supabase)
-    $conn_string = "host={$db_remota['host']} port={$db_remota['port']} dbname={$db_remota['dbname']} user={$db_remota['user']} password={$db_remota['pass']} sslmode=require";
-    $dbconn = pg_connect($conn_string);
-    if (!$dbconn) {
-        die("❌ No se pudo conectar a Supabase");
-    }
+    // En Render usamos solo Supabase
+    $pdo_local = null;
+    $pdo_remota = connectPDO($db_remota);
+    $pdo = $pdo_remota;
 } else {
-    // Conexión local con pg_connect
-    $conn_string_local = "host={$db_local['host']} port={$db_local['port']} dbname={$db_local['dbname']} user={$db_local['user']} password={$db_local['pass']}";
-    $dbconn = pg_connect($conn_string_local);
-    if (!$dbconn) {
-        die("❌ No se pudo conectar a la base local");
-    }
+    // En local puedes usar ambas
+    $pdo_local = connectPDO($db_local);
+    $pdo_remota = connectPDO($db_remota);
+    $pdo = $pdo_local;
 }
 
 // =======================
@@ -54,12 +67,9 @@ if ($id <= 0) {
 // =======================
 // Consulta principal
 // =======================
-$result = pg_query_params($dbconn, "SELECT * FROM empleados WHERE id_empleado = $1", [$id]);
-if (!$result) {
-    die("❌ Error en la consulta");
-}
-
-$empleado = pg_fetch_assoc($result);
+$stmt = $pdo->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
+$stmt->execute([$id]);
+$empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$empleado) {
     echo "Empleado no encontrado";
@@ -68,11 +78,20 @@ if (!$empleado) {
 
     // Mostrar foto del carnet si existe
     if (!empty($empleado['imagen'])) {
-        echo "<img src='" . htmlspecialchars($empleado['imagen']) . "' alt='Foto del carnet' width='100'>";
+        // Ajustar la foto a 35x45 mm (aprox 105x135 px para pantalla)
+        echo "<img src='" . htmlspecialchars($empleado['imagen']) . "' alt='Foto del carnet' width='105' height='135'>";
     }
 }
 
 // =======================
-// Cerrar conexión
+// Ejemplo de consulta remota desde local (opcional)
 // =======================
-pg_close($dbconn);
+if (!$isRender && $pdo_remota !== null && $pdo_remota !== $pdo) {
+    $stmt2 = $pdo_remota->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
+    $stmt2->execute([$id]);
+    $empleado_remoto = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+    if ($empleado_remoto) {
+        echo "<p>Empleado en base remota: " . htmlspecialchars($empleado_remoto['nombre_completo']) . "</p>";
+    }
+}
