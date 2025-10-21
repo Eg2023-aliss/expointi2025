@@ -19,11 +19,11 @@ $db_local = [
 // Base remota (Supabase o Render PostgreSQL)
 // ⚠️ Asegúrate de poner los valores correctos desde tu panel de Supabase
 $db_remota = [
-  'host' => 'db.xxxxx.supabase.co',        // <-- cámbialo por tu host real
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
 'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres.xxxxxxx',            // <-- cámbialo por tu usuario real
-'pass' => 'TuContraseñaReal',            // <-- cámbialo por tu contraseña real
+'dbname' => 'postgres3',
+'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+'pass' => 'Zv2sW23OhBVM5Tkz',            // <-- cámbialo por tu contraseña real
 'sslmode' => 'require'
 ];
 
