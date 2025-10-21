@@ -5,32 +5,21 @@ ini_set('display_errors', 1);
 // ==========================
 // CONFIGURACIÓN DE BASES
 // ==========================
-
-$db_local = [
-      'URL' => 'jdbc:postgresql://localhost:5432/postgres',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
-];
-
 $db_cloud = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '6543',
-'dbname' => 'postgres',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz'
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+    'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
-// ==========================
-// FUNCIÓN DE CONEXIÓN
-// ==========================
 function getPDO($config) {
     $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['dbname']}";
     return new PDO($dsn, $config['user'], $config['pass'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
 }
+
 
 $message = "";
 
