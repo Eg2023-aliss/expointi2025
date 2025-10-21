@@ -2,40 +2,58 @@
 ob_start();
 require('fpdf/fpdf.php');
 
-// ==========================
-// CONFIGURACIÓN DE BASE DE DATOS
-// ==========================
-$db_config = [
-    'host' => 'aws-1-us-east-2.pooler.supabase.com', // Cloud DB
-    'port' => '5432',
-    'dbname' => 'postgres3',
-    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz'
+// =======================================
+// 🔹 CONFIGURACIÓN DE CONEXIÓN DUAL
+// =======================================
+
+// Base local
+$db_config_cloud = [
+    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+'port' => '5432',
+'dbname' => 'postgres3',
+'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
+$db_config_local = [
+       'host' => 'localhost',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345'
+];
+
+// Conexión dinámica según origen
 try {
-    $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
-    $pdo = new PDO($dsn, $db_config['user'], $db_config['pass']);
+    $conexion = (isset($_GET['origen']) && $_GET['origen'] === 'cloud') ? $db_cloud : $db_local;
+
+    $dsn = "pgsql:host={$conexion['host']};port={$conexion['port']};dbname={$conexion['dbname']}";
+    $pdo = new PDO($dsn, $conexion['user'], $conexion['pass']);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("❌ Error de conexión: " . $e->getMessage());
 }
 
-// ==========================
-// OBTENER DATOS DEL EMPLEADO
-// ==========================
+// =======================================
+// 🔹 OBTENER DATOS DEL EMPLEADO
+// =======================================
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-if ($id <= 0) die("ID de empleado no válido");
+
+if ($id <= 0) {
+    die("ID de empleado no válido");
+}
 
 $stmt = $pdo->prepare("SELECT nombre, puesto, identificacion, foto FROM empleados WHERE id_empleado = ?");
 $stmt->execute([$id]);
 $empleado = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$empleado) die("Empleado no encontrado");
+if (!$empleado) {
+    die("Empleado no encontrado en la base de datos");
+}
 
-// ==========================
-// CREAR PDF
-// ==========================
+// =======================================
+// 🔹 CREAR PDF
+// =======================================
 class PDF extends FPDF {
     function Header() {
         $this->SetFont('Arial','B',16);
@@ -56,12 +74,11 @@ $pdf->Cell(0,10,utf8_decode("Puesto: " . $empleado['puesto']),0,1);
 $pdf->Cell(0,10,utf8_decode("Identificación: " . $empleado['identificacion']),0,1);
 $pdf->Ln(10);
 
-// Foto ajustada a 35x45 mm
-$fotoPath = 'uploads/' . $empleado['foto'];
-if (!empty($empleado['foto']) && file_exists($fotoPath)) {
-    $pdf->Image($fotoPath, 80, 90, 35, 45);
+// Foto del empleado
+if (!empty($empleado['foto']) && file_exists('uploads/'.$empleado['foto'])) {
+    $pdf->Image('uploads/'.$empleado['foto'], 80, 90, 50, 50);
 } else {
-    $pdf->Rect(80, 90, 35, 45);
+    $pdf->Rect(80, 90, 50, 50);
     $pdf->Text(92, 115, 'Sin foto');
 }
 
@@ -69,13 +86,12 @@ $pdf->Ln(75);
 $pdf->SetFont('Arial','I',10);
 $pdf->Cell(0,10,utf8_decode('Emitido por Recursos Humanos'),0,1,'C');
 
-// ==========================
-// FORZAR DESCARGA
-// ==========================
+// =======================================
+// 🔹 FORZAR DESCARGA
+// =======================================
 ob_end_clean();
-$filename = 'Carnet_' . preg_replace('/[^A-Za-z0-9]/', '_', $empleado['nombre']) . '.pdf';
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="'.$filename.'"');
-$pdf->Output('I', $filename);
+header('Content-Disposition: attachment; filename="Carnet_' . $empleado['nombre'] . '.pdf"');
+$pdf->Output('I', 'Carnet_' . $empleado['nombre'] . '.pdf');
 exit;
 ?>
