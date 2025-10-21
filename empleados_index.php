@@ -56,18 +56,19 @@ if ($isRender) {
 // EJEMPLO: obtener empleados desde local si existe, sino remoto
 // =============================================================
 $empleados = [];
+
 if ($pdo_local) {
+    // Usar la conexión local
     $stmt = $pdo_local->query("SELECT * FROM empleados ORDER BY nombre_completo");
     $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } elseif ($pdo_remota) {
+    // Si no hay local, usar la conexión remota
     $stmt = $pdo_remota->query("SELECT * FROM empleados ORDER BY nombre_completo");
     $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    // Ninguna conexión disponible
+    die("❌ No se pudo conectar a ninguna base de datos.");
 }
-
-
-// ---------- CONSULTAR EMPLEADOS ----------
-$stmt = $pdo->query("SELECT * FROM empleados ORDER BY nombre_completo"); // Orden por nombre
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ---------- FUNCIÓN PARA DETERMINAR ÁREA SEGÚN PUESTO ----------
 function getAreaByPuesto($puesto) {
