@@ -3,7 +3,7 @@
 // Configuración de bases de datos
 // =======================
 
-// Base de datos local (solo para desarrollo local, Render no puede usar localhost)
+// Base de datos local (solo para desarrollo en tu PC)
 $db_local = [
     'host' => 'localhost',
     'port' => '5432',
@@ -12,13 +12,14 @@ $db_local = [
     'pass' => '12345'
 ];
 
-// Base de datos remota (usada en Render)
+// Base de datos remota (Supabase)
 $db_remota = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
     'port' => '5432',
     'dbname' => 'postgres3',
     'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz'
+    'pass' => 'Zv2sW23OhBVM5Tkz',
+    'sslmode' => 'require'
 ];
 
 // =======================
@@ -27,6 +28,10 @@ $db_remota = [
 function connectPDO($dbConfig) {
     try {
         $dsn = "pgsql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']}";
+        // Añadir sslmode si existe
+        if (!empty($dbConfig['sslmode'])) {
+            $dsn .= ";sslmode={$dbConfig['sslmode']}";
+        }
         $pdo = new PDO($dsn, $dbConfig['user'], $dbConfig['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $pdo;
@@ -36,18 +41,20 @@ function connectPDO($dbConfig) {
 }
 
 // =======================
-// Detectar si estamos en Render o local
+// Detectar entorno
 // =======================
-if (getenv('RENDER') === 'true') {
-    // Conexión en Render → solo remota
-    $pdo_local = null; // no se usa
+$isRender = getenv('RENDER') === 'true';
+
+if ($isRender) {
+    // En Render solo usamos la remota (Supabase)
+    $pdo_local = null;
     $pdo_remota = connectPDO($db_remota);
-    $pdo = $pdo_remota; // usar por defecto
+    $pdo = $pdo_remota; // conexión principal
 } else {
-    // Conexión local → se pueden usar ambas
+    // En local puedes usar ambas
     $pdo_local = connectPDO($db_local);
     $pdo_remota = connectPDO($db_remota);
-    $pdo = $pdo_local; // usar por defecto
+    $pdo = $pdo_local; // por defecto usar local
 }
 
 // =======================
@@ -59,7 +66,7 @@ if ($id <= 0) {
 }
 
 // =======================
-// Consulta ejemplo en la base remota (usada por defecto en Render)
+// Consulta principal
 // =======================
 $stmt = $pdo->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
 $stmt->execute([$id]);
@@ -69,16 +76,17 @@ if (!$empleado) {
     echo "Empleado no encontrado";
 } else {
     echo "<h2>Empleado: " . htmlspecialchars($empleado['nombre_completo']) . "</h2>";
+
     // Mostrar foto del carnet si existe
     if (!empty($empleado['imagen'])) {
-        echo "<img src='{$empleado['imagen']}' alt='Foto del carnet' width='100'>";
+        echo "<img src='" . htmlspecialchars($empleado['imagen']) . "' alt='Foto del carnet' width='100'>";
     }
 }
 
 // =======================
-// Si quieres usar también la remota desde local
+// Ejemplo de consulta remota desde local (opcional)
 // =======================
-if ($pdo_local !== null && $pdo_local !== $pdo) {
+if (!$isRender && $pdo_remota !== null && $pdo_remota !== $pdo) {
     $stmt2 = $pdo_remota->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
     $stmt2->execute([$id]);
     $empleado_remoto = $stmt2->fetch(PDO::FETCH_ASSOC);
