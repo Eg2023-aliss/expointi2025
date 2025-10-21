@@ -1,60 +1,94 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors',1);
+ini_set('display_errors', 1);
 
-// Configuración de BD
+// ==========================
+// CONFIGURACIÓN DE BASES
+// ==========================
+
 $db_local = [
-    'host'=>'localhost','port'=>'5432','dbname'=>'postgres','user'=>'postgres','pass'=>'12345'
+      'URL' => 'jdbc:postgresql://localhost:5432/postgres',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345'
 ];
+
 $db_cloud = [
-    'host'=>'aws-1-us-east-2.pooler.supabase.com','port'=>'5432','dbname'=>'postgres',
-    'user'=>'postgres.orzsdjjmyouhhxjfnemt','pass'=>'Zv2sW23OhBVM5Tkz'
+    'host' => 'localhost',
+'port' => '6543',
+'dbname' => 'postgres',
+'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
-function getPDO($cfg){
-    $ssl = str_contains($cfg['host'],'supabase.com') ? ';sslmode=require' : '';
-    $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}{$ssl}";
-    return new PDO($dsn, $cfg['user'], $cfg['pass'], [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
-}
-
-function runBoth($callback){
-    global $db_local, $db_cloud;
-    $callback(getPDO($db_local));
-    $callback(getPDO($db_cloud));
+// ==========================
+// FUNCIÓN DE CONEXIÓN
+// ==========================
+function getPDO($config) {
+    $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['dbname']}";
+    return new PDO($dsn, $config['user'], $config['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
 }
 
 $message = "";
-if($_SERVER['REQUEST_METHOD']==='POST'){
-    $username = $_POST['username'];
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'],PASSWORD_BCRYPT);
 
-    try{
-        runBoth(function($pdo) use($username,$email,$password,&$message){
-            // Crear tabla usuarios si no existe
-            $pdo->exec("CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(50) NOT NULL,
-                email VARCHAR(100) NOT NULL,
-                password VARCHAR(255) NOT NULL
-            )");
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    try {
+        $pdo_local = getPDO($db_local);
+        $pdo_cloud = getPDO($db_cloud);
 
-            // Verificar correo en curriculum
-            $stmtCheck = $pdo->prepare("SELECT id_empleado FROM curriculum WHERE correo=:email");
-            $stmtCheck->execute([':email'=>$email]);
-            $empleado = $stmtCheck->fetch();
+        // Crear tabla usuarios si no existe
+        $createSQL = "
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) NOT NULL,
+            email VARCHAR(100) NOT NULL,
+            password VARCHAR(255) NOT NULL
+            );
+            ";
+$pdo_local->exec($createSQL);
+$pdo_cloud->exec($createSQL);
 
-            if(!$empleado){
-                $message = "❌ No puedes registrarte: el correo no corresponde a un empleado contratado.";
-                return;
-            }
+// Recibir datos del formulario
+$username = $_POST['username'] ?? '';
+$email = $_POST['email'] ?? '';
+$password = password_hash($_POST['password'] ?? '', PASSWORD_BCRYPT);
 
-            $stmt = $pdo->prepare("INSERT INTO usuarios (username,email,password) VALUES (:username,:email,:password)");
-            $stmt->execute([':username'=>$username, ':email'=>$email, ':password'=>$password]);
-            $message = "✅ Usuario registrado en ambas bases";
-        });
-    }catch(PDOException $e){
-        $message = "❌ Error: ".$e->getMessage();
+// Verificar que el email exista en curriculum
+$checkSQL = "SELECT id_empleado, nombre_completo FROM curriculum WHERE correo = :email";
+$stmtCheck = $pdo_local->prepare($checkSQL);
+$stmtCheck->execute([':email' => $email]);
+$empleado = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+if (!$empleado) {
+    $message = "❌ No puedes registrarte: el correo no corresponde a un empleado contratado.";
+} else {
+    // Query de inserción
+    $insertSQL = "INSERT INTO usuarios (username, email, password) VALUES (:username, :email, :password)";
+
+    // Insertar en Local
+    $stmtLocal = $pdo_local->prepare($insertSQL);
+    $stmtLocal->execute([
+        ':username' => $username,
+        ':email' => $email,
+        ':password' => $password
+    ]);
+
+    // Insertar en Nube
+    $stmtCloud = $pdo_cloud->prepare($insertSQL);
+    $stmtCloud->execute([
+        ':username' => $username,
+        ':email' => $email,
+        ':password' => $password
+    ]);
+
+    $message = "✅ Usuario registrado con éxito en ambas bases.";
+}
+
+    } catch (PDOException $e) {
+        $message = "❌ Error: " . $e->getMessage();
     }
 }
 ?>
