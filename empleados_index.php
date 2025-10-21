@@ -6,11 +6,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require('fpdf/fpdf.php');
 
-// 🔐 Verificar sesión
-if (!isset($_SESSION['usuario_id'])) {
-  header("Location: pages/login.php");
-  exit;
-}
+
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
