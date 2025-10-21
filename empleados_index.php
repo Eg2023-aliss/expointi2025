@@ -55,7 +55,7 @@ $pdo_remota = null;
 
 if ($isRender) {
   // En Render → solo usa la base remota
-  $pdo_remota = conectarDB($db_remota);
+  $pdo_remota = conectarDB($db_local);
 } else {
   // En entorno local → usa ambas
   $pdo_local = conectarDB($db_local);
