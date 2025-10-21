@@ -2,50 +2,40 @@
 // =============================================================
 // CONFIGURACIÓN DE BASES DE DATOS
 // =============================================================
-
-// Detectar si el entorno es Render (Render define la variable de entorno RENDER=true)
 $isRender = getenv('RENDER') === 'true';
 
-// Base local (para desarrollo en tu PC)
 $db_local = [
-  'host' => 'localhost',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345',
-'sslmode' => 'disable'
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345',
+    'sslmode' => 'disable'
 ];
 
-// Base remota (Supabase o Render PostgreSQL)
-// ⚠️ Asegúrate de poner los valores correctos desde tu panel de Supabase
 $db_remota = [
-  'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '5432',
-'dbname' => 'postgres3',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz',            // <-- cámbialo por tu contraseña real
-'sslmode' => 'require'
+    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+    'port' => '5432',
+    'dbname' => 'postgres3',
+    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+    'pass' => 'Zv2sW23OhBVM5Tkz',
+    'sslmode' => 'require'
 ];
 
 // =============================================================
 // FUNCIÓN PARA CONECTAR A UNA BASE DE DATOS
 // =============================================================
-function getPDO($cfg = null) {
-  global $db_config;
-  $use = $cfg ?? $db_config;
-
-  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']};sslmode=require";
-
-  try {
-    return new PDO($dsn, $use['user'], $use['pass'], [
-      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-  } catch (Exception $e) {
-    error_log("Error de conexión a {$use['host']}: ".$e->getMessage());
-    return null;
-  }
+function getPDO($cfg) {
+    $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']};sslmode={$cfg['sslmode']}";
+    try {
+        return new PDO($dsn, $cfg['user'], $cfg['pass'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]);
+    } catch (Exception $e) {
+        error_log("Error de conexión a {$cfg['host']}: ".$e->getMessage());
+        return null;
+    }
 }
-
 
 // =============================================================
 // ESTABLECER CONEXIONES SEGÚN EL ENTORNO
@@ -54,52 +44,26 @@ $pdo_local = null;
 $pdo_remota = null;
 
 if ($isRender) {
-  // En Render → solo usa la base remota
-  $pdo_remota = conectarDB($db_local);
+    // Render → solo base remota
+    $pdo_remota = getPDO($db_remota);
 } else {
-  // En entorno local → usa ambas
- // Local
-$pdoLocal = getPDO($db_config_local);
-
-// Supabase
-$pdoCloud = getPDO($db_config_cloud);
-
-// Ejemplo de uso
-$stmt = $pdoLocal->query("SELECT * FROM empleados");
-$rowsLocal = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-}
-// Helper: obtiene curriculum probando local y luego cloud si no existe local
-function fetchCurriculumById($id_empleado) {
-  global $db_config_local, $db_config_cloud;
-  $fields = "id_empleado, nombre, puesto, experiencia, educacion, habilidades, correo";
-  // Intenta en local
-  try {
-    $pdo = getPDO($db_config_local);
-    $stmt = $pdo->prepare("SELECT $fields FROM curriculum WHERE id_empleado = :id LIMIT 1");
-    $stmt->execute(['id' => $id_empleado]);
-    $cv = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($cv) return $cv;
-  } catch (Exception $e) {
-    // no cortar, intentar en cloud
-    error_log("fetchCurriculum local error: ".$e->getMessage());
-  }
-  // Intenta en cloud
-  try {
-    $pdo = getPDO($db_config_cloud);
-    $stmt = $pdo->prepare("SELECT $fields FROM curriculum WHERE id_empleado = :id LIMIT 1");
-    $stmt->execute(['id' => $id_empleado]);
-    $cv = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($cv) return $cv;
-  } catch (Exception $e) {
-    error_log("fetchCurriculum cloud error: ".$e->getMessage());
-  }
-  return false;
+    // Entorno local → usar ambas
+    $pdo_local = getPDO($db_local);
+    $pdo_remota = getPDO($db_remota);
 }
 
+// =============================================================
+// EJEMPLO: obtener empleados desde local si existe, sino remoto
+// =============================================================
+$empleados = [];
+if ($pdo_local) {
+    $stmt = $pdo_local->query("SELECT * FROM empleados ORDER BY nombre_completo");
+    $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} elseif ($pdo_remota) {
+    $stmt = $pdo_remota->query("SELECT * FROM empleados ORDER BY nombre_completo");
+    $empleados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-// ---------- DATOS EMPLEADOS DESDE LA BD ----------
-$pdo = getPDO(); // Conexión
 
 // ---------- CONSULTAR EMPLEADOS ----------
 $stmt = $pdo->query("SELECT * FROM empleados ORDER BY nombre_completo"); // Orden por nombre
