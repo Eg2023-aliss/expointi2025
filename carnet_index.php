@@ -23,11 +23,11 @@ $db_remota = [
 
 
 // =======================
-// Conexión a base de datos local
+// Conexión a base de datos local (si realmente tienes PostgreSQL en tu servidor)
 // =======================
 try {
     $dsn_local = "pgsql:host={$db_local['host']};port={$db_local['port']};dbname={$db_local['dbname']}";
-    $pdo_local = new PDO($dsn_local, $db_local['user'], $db_local['password']);
+    $pdo_local = new PDO($dsn_local, $db_local['user'], $db_local['pass']); // aquí 'pass' no 'password'
     $pdo_local->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("❌ Error de conexión a la base local: " . $e->getMessage());
@@ -38,11 +38,12 @@ try {
 // =======================
 try {
     $dsn_remota = "pgsql:host={$db_remota['host']};port={$db_remota['port']};dbname={$db_remota['dbname']}";
-    $pdo_remota = new PDO($dsn_remota, $db_remota['user'], $db_remota['password']);
+    $pdo_remota = new PDO($dsn_remota, $db_remota['user'], $db_remota['pass']); // aquí también 'pass'
     $pdo_remota->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     die("❌ Error de conexión a la base remota: " . $e->getMessage());
 }
+
 
 // =======================
 // Ejemplo de consulta en la base local
