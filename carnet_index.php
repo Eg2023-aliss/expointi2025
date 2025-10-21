@@ -23,38 +23,24 @@ $db_remota = [
 ];
 
 // =======================
-// Función para crear conexión PDO
-// =======================
-function connectPDO($dbConfig) {
-    try {
-        $dsn = "pgsql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']}";
-        // Añadir sslmode si existe
-        if (!empty($dbConfig['sslmode'])) {
-            $dsn .= ";sslmode={$dbConfig['sslmode']}";
-        }
-        $pdo = new PDO($dsn, $dbConfig['user'], $dbConfig['pass']);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        return $pdo;
-    } catch (PDOException $e) {
-        die("❌ Error de conexión a {$dbConfig['host']}: " . $e->getMessage());
-    }
-}
-
-// =======================
 // Detectar entorno
 // =======================
 $isRender = getenv('RENDER') === 'true';
 
 if ($isRender) {
-    // En Render solo usamos la remota (Supabase)
-    $pdo_local = null;
-    $pdo_remota = connectPDO($db_remota);
-    $pdo = $pdo_remota; // conexión principal
+    // Conexión remota con pg_connect (Supabase)
+    $conn_string = "host={$db_remota['host']} port={$db_remota['port']} dbname={$db_remota['dbname']} user={$db_remota['user']} password={$db_remota['pass']} sslmode=require";
+    $dbconn = pg_connect($conn_string);
+    if (!$dbconn) {
+        die("❌ No se pudo conectar a Supabase");
+    }
 } else {
-    // En local puedes usar ambas
-    $pdo_local = connectPDO($db_local);
-    $pdo_remota = connectPDO($db_remota);
-    $pdo = $pdo_local; // por defecto usar local
+    // Conexión local con pg_connect
+    $conn_string_local = "host={$db_local['host']} port={$db_local['port']} dbname={$db_local['dbname']} user={$db_local['user']} password={$db_local['pass']}";
+    $dbconn = pg_connect($conn_string_local);
+    if (!$dbconn) {
+        die("❌ No se pudo conectar a la base local");
+    }
 }
 
 // =======================
@@ -68,9 +54,12 @@ if ($id <= 0) {
 // =======================
 // Consulta principal
 // =======================
-$stmt = $pdo->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
-$stmt->execute([$id]);
-$empleado = $stmt->fetch(PDO::FETCH_ASSOC);
+$result = pg_query_params($dbconn, "SELECT * FROM empleados WHERE id_empleado = $1", [$id]);
+if (!$result) {
+    die("❌ Error en la consulta");
+}
+
+$empleado = pg_fetch_assoc($result);
 
 if (!$empleado) {
     echo "Empleado no encontrado";
@@ -84,14 +73,6 @@ if (!$empleado) {
 }
 
 // =======================
-// Ejemplo de consulta remota desde local (opcional)
+// Cerrar conexión
 // =======================
-if (!$isRender && $pdo_remota !== null && $pdo_remota !== $pdo) {
-    $stmt2 = $pdo_remota->prepare("SELECT * FROM empleados WHERE id_empleado = ?");
-    $stmt2->execute([$id]);
-    $empleado_remoto = $stmt2->fetch(PDO::FETCH_ASSOC);
-
-    if ($empleado_remoto) {
-        echo "<p>Empleado en base remota: " . htmlspecialchars($empleado_remoto['nombre_completo']) . "</p>";
-    }
-}
+pg_close($dbconn);
