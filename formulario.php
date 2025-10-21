@@ -4,6 +4,7 @@ ob_start();
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// 🔹 Configuración de conexiones
 $db_config_cloud = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
     'port' => '5432',
@@ -12,16 +13,44 @@ $db_config_cloud = [
     'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
-function getPDO() {
-    global $db_config_cloud;
-    $dsn = "pgsql:host={$db_config_cloud['host']};port={$db_config_cloud['port']};dbname={$db_config_cloud['dbname']}";
-    return new PDO($dsn, $db_config_cloud['user'], $db_config_cloud['pass'], [
+$db_config_local = [
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
+];
+
+// 🔹 Función para conectarse a PostgreSQL (local o cloud)
+function getPDO($cfg) {
+    $ssl = '';
+    if (str_contains($cfg['host'], 'supabase.com')) {
+        $ssl = ';sslmode=require';
+    }
+    $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}{$ssl}";
+    return new PDO($dsn, $cfg['user'], $cfg['pass'], [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 }
 
+// 🔹 Función para ejecutar la misma acción en ambas bases
+function runBoth($callback) {
+    global $db_config_local, $db_config_cloud;
+    try {
+        $pdoLocal = getPDO($db_config_local);
+        $pdoCloud = getPDO($db_config_cloud);
+        $callback($pdoLocal);
+        $callback($pdoCloud);
+    } catch (Exception $e) {
+        echo "<script>alert('⚠️ Error al registrar: ".$e->getMessage()."');</script>";
+        exit;
+    }
+}
+
+// 🟩 Procesar formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $nombre = $_POST['nombre_completo'];
     $fecha_nacimiento = $_POST['fecha_nacimiento'];
     $dui = $_POST['dui'];
@@ -42,43 +71,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $puesto = $_POST['profesion'];
     $fecha_contratacion = date('Y-m-d');
 
+    // 🔸 Imagen (si se sube)
     $imagen = null;
     if (!empty($_FILES['imagen']['tmp_name'])) {
         $imagenData = file_get_contents($_FILES['imagen']['tmp_name']);
         $imagen = base64_encode($imagenData);
     }
 
+    // 🔹 Generar ID único global para empleado
     $id_empleado_global = hexdec(substr(uniqid(), 0, 8));
 
-    $pdo = getPDO();
-    $pdo->beginTransaction();
-    try {
-        $stmt1 = $pdo->prepare("INSERT INTO empleados (id, nombre_completo, dui, nit, correo, puesto, fecha_contratacion, telefono)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt1->execute([$id_empleado_global, $nombre, $dui, uniqid('NIT'), $correo, $puesto, $fecha_contratacion, $telefono]);
+    // 🔹 Insertar en ambas BD usando runBoth()
+    runBoth(function($pdo) use (
+        $id_empleado_global, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
+        $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
+        $experiencia, $educacion, $habilidades, $idiomas, $certificaciones,
+        $cursos, $salario, $puesto, $fecha_contratacion, $imagen
+    ) {
+        $pdo->beginTransaction();
+        try {
+            // Insertar en empleados
+            $stmt1 = $pdo->prepare("INSERT INTO empleados (id, nombre_completo, dui, nit, correo, puesto, fecha_contratacion, telefono)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt1->execute([$id_empleado_global, $nombre, $dui, uniqid('NIT'), $correo, $puesto, $fecha_contratacion, $telefono]);
 
-        $stmt2 = $pdo->prepare("INSERT INTO curriculum (
-            id_empleado, imagen, nombre_completo, fecha_nacimiento, dui, sexo, profesion,
-            telefono, correo, direccion, linkedin, resumen_profesional, experiencia,
-            educacion, habilidades, idiomas, certificaciones, cursos, salario_pretendido
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            // Insertar en curriculum
+            $stmt2 = $pdo->prepare("INSERT INTO curriculum (
+                id_empleado, imagen, nombre_completo, fecha_nacimiento, dui, sexo, profesion,
+                telefono, correo, direccion, linkedin, resumen_profesional, experiencia,
+                educacion, habilidades, idiomas, certificaciones, cursos, salario_pretendido
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
-        $stmt2->execute([
-            $id_empleado_global, $imagen, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
-            $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
-            $experiencia, $educacion, $habilidades, $idiomas, $certificaciones,
-            $cursos, $salario
-        ]);
+            $stmt2->execute([
+                $id_empleado_global, $imagen, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
+                $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
+                $experiencia, $educacion, $habilidades, $idiomas, $certificaciones,
+                $cursos, $salario
+            ]);
 
-        $pdo->commit();
-        echo "<script>alert('✅ Encargado registrado correctamente'); window.location='empleados_index.php';</script>";
-        exit;
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        echo "<script>alert('⚠️ Error: ".$e->getMessage()."');</script>";
-    }
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    });
+
+    echo "<script>alert('✅ Encargado registrado correctamente'); window.location='empleados_index.php';</script>";
+    exit;
 }
 ?>
+
 
 
 <!DOCTYPE html>
