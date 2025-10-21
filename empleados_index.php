@@ -9,23 +9,29 @@ require('fpdf/fpdf.php');
 
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
-$db_config_cloud = [
-  'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '5432',
-'dbname' => 'postgres3',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz'
-];
+$isRender = getenv('RENDER') === 'true';
 
-$db_config_local = [
-      'host' => 'localhost',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
-];
-
-$db_config = $db_config_local;
+if ($isRender) {
+    // usar la base remota
+    $db = [
+        'host' => 'aws-1-us-east-2.pooler.supabase.com',
+        'port' => '5432',
+        'dbname' => 'postgres3',
+        'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+        'pass' => 'Zv2sW23OhBVM5Tkz',
+        'sslmode' => 'require'
+    ];
+} else {
+    // usar la base local solo en tu PC
+    $db = [
+        'host' => 'localhost',
+        'port' => '5432',
+        'dbname' => 'postgres',
+        'user' => 'postgres',
+        'pass' => '1234',
+        'sslmode' => 'disable'
+    ];
+}
 
 // ---------- FUNCIONES ----------
 function getPDO($cfg = null) {
