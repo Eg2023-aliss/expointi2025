@@ -2,69 +2,125 @@
 session_start();
 ob_start();
 ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
+// 🔹 Configuración de conexiones
 $db_config_cloud = [
-  'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz'
+    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+    'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
- 'URL' => 'jdbc:postgresql://localhost:5432/postgres',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
+    'host' => 'localhost',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
 ];
 
-$db_config = $db_config_local;
-
-function getPDO() {
-  global $db_config;
-  $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
-  return new PDO($dsn, $db_config['user'], $db_config['pass'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-  ]);
+// 🔹 Función para conectarse a PostgreSQL (local o cloud)
+function getPDO($cfg) {
+    $ssl = '';
+    if (str_contains($cfg['host'], 'supabase.com')) {
+        $ssl = ';sslmode=require';
+    }
+    $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}{$ssl}";
+    return new PDO($dsn, $cfg['user'], $cfg['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 }
 
-// ---------- PROCESAR LOGIN ----------
-$error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $user = trim($_POST['user'] ?? '');
-  $password = trim($_POST['password'] ?? '');
-
-  if ($user !== '' && $password !== '') {
+// 🔹 Función para ejecutar en ambas BD
+function runBoth($callback) {
+    global $db_config_local, $db_config_cloud;
     try {
-      $pdo = getPDO();
-      $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE username = :user OR email = :user LIMIT 1");
-      $stmt->execute([':user' => $user]);
-      $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-      if ($row) {
-        if ($row['password'] === $password) {
-          $_SESSION['usuario_id'] = $row['id'];
-          $_SESSION['usuario'] = $row['username'];
-          header("Location: empleados_index.php");
-          exit;
-        } else {
-          $error = "Usuario o contraseña incorrectos";
-        }
-      } else {
-        $error = "Usuario no encontrado";
-      }
+        $pdoLocal = getPDO($db_config_local);
+        $pdoCloud = getPDO($db_config_cloud);
+        $callback($pdoLocal);
+        $callback($pdoCloud);
     } catch (Exception $e) {
-      $error = "Error en la conexión: " . $e->getMessage();
+        echo "<script>alert('⚠️ Error al registrar: ".$e->getMessage()."');</script>";
+        exit;
     }
-  } else {
-    $error = "Por favor, complete todos los campos";
-  }
+}
+
+// 🟩 Procesar formulario
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $nombre = $_POST['nombre_completo'];
+    $fecha_nacimiento = $_POST['fecha_nacimiento'];
+    $dui = $_POST['dui'];
+    $sexo = $_POST['sexo'] === 'true';
+    $profesion = $_POST['profesion'];
+    $telefono = $_POST['telefono'];
+    $correo = $_POST['correo'];
+    $direccion = $_POST['direccion'];
+    $linkedin = $_POST['linkedin'];
+    $resumen_profesional = $_POST['resumen_profesional'];
+    $experiencia = $_POST['experiencia'];
+    $educacion = $_POST['educacion'];
+    $habilidades = $_POST['habilidades'];
+    $idiomas = $_POST['idiomas'];
+    $certificaciones = $_POST['certificaciones'];
+    $cursos = $_POST['cursos'];
+    $salario = $_POST['salario_pretendido'];
+    $puesto = $_POST['profesion'];
+    $fecha_contratacion = date('Y-m-d');
+
+    // 🔸 Imagen (si se sube)
+    $imagen = null;
+    if (!empty($_FILES['imagen']['tmp_name']) && is_uploaded_file($_FILES['imagen']['tmp_name'])) {
+        $imagenData = file_get_contents($_FILES['imagen']['tmp_name']);
+        $imagen = base64_encode($imagenData);
+    }
+
+    // 🔹 Generar ID único global para empleado (compatible con BIGINT)
+    $id_empleado_global = hexdec(substr(uniqid(), 0, 12));
+
+    // 🔹 Insertar en ambas BD
+    runBoth(function($pdo) use (
+        $id_empleado_global, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
+        $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
+        $experiencia, $educacion, $habilidades, $idiomas, $certificaciones,
+        $cursos, $salario, $puesto, $fecha_contratacion, $imagen
+    ) {
+        $pdo->beginTransaction();
+        try {
+            // Insertar en empleados usando ID único
+            $stmt1 = $pdo->prepare("INSERT INTO empleados (id, nombre_completo, dui, nit, correo, puesto, fecha_contratacion, telefono)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt1->execute([$id_empleado_global, $nombre, $dui, uniqid('NIT'), $correo, $puesto, $fecha_contratacion, $telefono]);
+
+            // Insertar en curriculum
+            $stmt2 = $pdo->prepare("INSERT INTO curriculum (
+                id_empleado, imagen, nombre_completo, fecha_nacimiento, dui, sexo, profesion,
+                telefono, correo, direccion, linkedin, resumen_profesional, experiencia,
+                educacion, habilidades, idiomas, certificaciones, cursos, salario_pretendido
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+
+            $stmt2->execute([
+                $id_empleado_global, $imagen, $nombre, $fecha_nacimiento, $dui, $sexo, $profesion,
+                $telefono, $correo, $direccion, $linkedin, $resumen_profesional,
+                $experiencia, $educacion, $habilidades, $idiomas, $certificaciones,
+                $cursos, $salario
+            ]);
+
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    });
+
+    echo "<script>alert('✅ Encargado registrado correctamente'); window.location='empleados_index.php';</script>";
+    exit;
 }
 ?>
+
 
 <!doctype html>
 <html lang="es">
