@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 // ==========================
 
 $db_local = [
-      'URL' => 'jdbc:postgresql://localhost:5432/postgres',
+    'host' => 'localhost',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
@@ -15,7 +15,7 @@ $db_local = [
 ];
 
 $db_cloud = [
-    'host' => 'localhost',
+    'host' => 'aws-1-us-east-2.pooler.supabase.com',
 'port' => '6543',
 'dbname' => 'postgres',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
