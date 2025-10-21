@@ -19,3 +19,10 @@ EXPOSE 80
 
 # ✅ Este comando mantiene Apache corriendo en primer plano
 CMD ["apache2ctl", "-D", "FOREGROUND"]
+
+# 🔧 Arreglar permisos para Render (Apache)
+RUN chmod -R 755 /var/www/html \
+ && find /var/www/html -type f -exec chmod 644 {} \; \
+ && chown -R www-data:www-data /var/www/html \
+ && echo "<Directory /var/www/html>\nAllowOverride All\nRequire all granted\n</Directory>" >> /etc/apache2/apache2.conf
+
