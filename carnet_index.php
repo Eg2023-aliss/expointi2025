@@ -6,9 +6,10 @@ require('fpdf/fpdf.php');
 // 🔹 CONFIGURACIÓN DE CONEXIÓN DUAL
 // =======================================
 
-// Base local
+
+// ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
-    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
 'port' => '5432',
 'dbname' => 'postgres3',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
@@ -16,18 +17,19 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-    'host' => 'localhost',
+     'url' => 'jdbc:postgresql://localhost:5432/postgres',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
 'pass' => '12345'
 ];
 
+$db_config = $db_config_local;
 // Conexión dinámica según origen
 try {
     $conexion = (isset($_GET['origen']) && $_GET['origen'] === 'cloud') ? $db_cloud : $db_local;
 
-    $dsn = "pgsql:host={$conexion['host']};port={$conexion['port']};dbname={$conexion['dbname']}";
+    $dsn = "pgsql:url={$conexion['url']};port={$conexion['port']};dbname={$conexion['dbname']}";
     $pdo = new PDO($dsn, $conexion['user'], $conexion['pass']);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
