@@ -2,57 +2,69 @@
 session_start();
 ob_start();
 ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-$db_config = [
-    'host' => 'aws-1-us-east-2.pooler.supabase.com',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz'
+// ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
+$db_config_cloud = [
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
+$db_config_local = [
+     'URL' => 'jdbc:postgresql://localhost:5432/postgres',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345'
+];
+
+$db_config = $db_config_local;
+
 function getPDO() {
-    global $db_config;
-    $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
-    return new PDO($dsn, $db_config['user'], $db_config['pass'], [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
+  global $db_config;
+  $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
+  return new PDO($dsn, $db_config['user'], $db_config['pass'], [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+  ]);
 }
 
+// ---------- PROCESAR LOGIN ----------
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $user = trim($_POST['user'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+  $user = trim($_POST['user'] ?? '');
+  $password = trim($_POST['password'] ?? '');
 
-    if ($user && $password) {
-        try {
-            $pdo = getPDO();
-            $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE username = :user OR email = :user LIMIT 1");
-            $stmt->execute([':user' => $user]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if ($user !== '' && $password !== '') {
+    try {
+      $pdo = getPDO();
+      $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE username = :user OR email = :user LIMIT 1");
+      $stmt->execute([':user' => $user]);
+      $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($row) {
-                if (password_verify($password, $row['password'])) {
-                    $_SESSION['usuario_id'] = $row['id'];
-                    $_SESSION['usuario'] = $row['username'];
-                    header("Location: empleados_index.php");
-                    exit;
-                } else {
-                    $error = "Usuario o contraseña incorrectos";
-                }
-            } else {
-                $error = "Usuario no encontrado";
-            }
-        } catch (Exception $e) {
-            $error = "Error en la conexión: " . $e->getMessage();
+      if ($row) {
+        if ($row['password'] === $password) {
+          $_SESSION['usuario_id'] = $row['id'];
+          $_SESSION['usuario'] = $row['username'];
+          header("Location: empleados_index.php");
+          exit;
+        } else {
+          $error = "Usuario o contraseña incorrectos";
         }
-    } else {
-        $error = "Por favor, complete todos los campos";
+      } else {
+        $error = "Usuario no encontrado";
+      }
+    } catch (Exception $e) {
+      $error = "Error en la conexión: " . $e->getMessage();
     }
+  } else {
+    $error = "Por favor, complete todos los campos";
+  }
 }
 ?>
-
 
 <!doctype html>
 <html lang="es">
