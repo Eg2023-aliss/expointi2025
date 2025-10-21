@@ -30,19 +30,22 @@ $db_remota = [
 // =============================================================
 // FUNCIÓN PARA CONECTAR A UNA BASE DE DATOS
 // =============================================================
-function conectarDB($config)
-{
-  $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};sslmode={$config['sslmode']}";
+function getPDO($cfg = null) {
+  global $db_config;
+  $use = $cfg ?? $db_config;
+
+  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']};sslmode=require";
+
   try {
-    $pdo = new PDO($dsn, $config['user'], $config['pass'], [
+    return new PDO($dsn, $use['user'], $use['pass'], [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
-    return $pdo;
-  } catch (PDOException $e) {
-    echo "<p style='color:red'>❌ Error de conexión a {$config['host']}: {$e->getMessage()}</p>";
+  } catch (Exception $e) {
+    error_log("Error de conexión a {$use['host']}: ".$e->getMessage());
     return null;
   }
 }
+
 
 // =============================================================
 // ESTABLECER CONEXIONES SEGÚN EL ENTORNO
