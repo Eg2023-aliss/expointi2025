@@ -12,17 +12,19 @@ if (!isset($_SESSION['usuario_id'])) {
   exit;
 }
 
-// ---------- CONFIGURACIÓN BASES DE DATOS ----------
+
+
+// ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
 $db_config_cloud = [
   'host' => 'aws-1-us-east-2.pooler.supabase.com',
 'port' => '5432',
-'dbname' => 'postgres3',
+'dbname' => 'postgres',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
 'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
-      'host' => 'localhost',
+     'host' => 'localhost',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
@@ -31,30 +33,18 @@ $db_config_local = [
 
 $db_config = $db_config_local;
 
-// ---------- FUNCIONES ----------
-function getPDO($cfg = null) {
-  // Si se pasa $cfg, úsalo; si no, usa $db_config global
+function getPDO() {
   global $db_config;
-  $use = $cfg ?? $db_config;
-  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']}";
-  return new PDO($dsn, $use['user'], $use['pass'], [
+  $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
+  return new PDO($dsn, $db_config['user'], $db_config['pass'], [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
   ]);
 }
 
-function runBoth($callback) {
-  global $db_config_local, $db_config_cloud;
-  $results = [];
-  try {
-    $pdoL = getPDO($db_config_local);
-    $pdoC = getPDO($db_config_cloud);
-    $results[] = $callback($pdoL);
-    $results[] = $callback($pdoC);
-  } catch (Exception $e) {
-    error_log("Error runBoth: " . $e->getMessage());
-  }
-  return $results[0] ?? null;
-}
+
+$db_config = $db_config_local;
+
+
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
