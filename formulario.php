@@ -14,15 +14,15 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-    'host' => 'localhost',
-    'port' => '5432',
-    'dbname' => 'postgres',
-    'user' => 'postgres',
-    'pass' => '12345'
+ 'host' => 'localhost',
+ 'port' => '5432',
+ 'dbname' => 'postgres',
+ 'user' => 'postgres',
+ 'pass' => '12345'
 ];
 
 // 🔹 Función para conectarse a PostgreSQL (local o cloud)
-function getPDO($cfg) {
+function getPDO($cfg = null) {
     $ssl = '';
     if (str_contains($cfg['host'], 'supabase.com')) {
         $ssl = ';sslmode=require';
@@ -73,13 +73,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 🔸 Imagen (si se sube)
     $imagen = null;
+    $fotoNombre = null;
     if (!empty($_FILES['imagen']['tmp_name']) && is_uploaded_file($_FILES['imagen']['tmp_name'])) {
         $imagenData = file_get_contents($_FILES['imagen']['tmp_name']);
         $imagen = base64_encode($imagenData);
+
+        // Guardar imagen físicamente para carnets
+        $uploadDir = __DIR__ . '/uploads/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+        $fotoNombre = uniqid() . '_' . basename($_FILES['imagen']['name']);
+        move_uploaded_file($_FILES['imagen']['tmp_name'], $uploadDir . $fotoNombre);
+
+        // Usar el nombre de archivo para la BD
+        $imagen = $fotoNombre;
     }
 
-    // 🔹 Generar ID único global para empleado (compatible con BIGINT)
-    $id_empleado_global = hexdec(substr(uniqid(), 0, 12));
+    // 🔹 Generar ID único global para empleado
+    $id_empleado_global = hexdec(substr(uniqid(), 0, 8)); // valor numérico único
 
     // 🔹 Insertar en ambas BD
     runBoth(function($pdo) use (
@@ -120,7 +130,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="es">
