@@ -58,8 +58,16 @@ if ($isRender) {
   $pdo_remota = conectarDB($db_local);
 } else {
   // En entorno local → usa ambas
-  $pdo_local = conectarDB($db_local);
-  $pdo_remota = conectarDB($db_remota);
+ // Local
+$pdoLocal = getPDO($db_config_local);
+
+// Supabase
+$pdoCloud = getPDO($db_config_cloud);
+
+// Ejemplo de uso
+$stmt = $pdoLocal->query("SELECT * FROM empleados");
+$rowsLocal = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 }
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
