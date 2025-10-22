@@ -6,17 +6,6 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require('fpdf/fpdf.php');
 
-// 🔐 Verificar sesión
-if (!isset($_SESSION['usuario_id'])) {
-  $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
-  $baseUrl .= "://".$_SERVER['HTTP_HOST'];
-  header("Location: $baseUrl/login.php");
-  exit;
-}
-
-
-
-
 // ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
 $db_config_cloud = [
   'host' => 'aws-1-us-east-2.pooler.supabase.com',
