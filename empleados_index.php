@@ -7,6 +7,10 @@ error_reporting(E_ALL);
 require('fpdf/fpdf.php');
 
 // 🔐 Verificar sesión
+if (!isset($_SESSION['usuario_id'])) {
+  header("Location: login.php");
+  exit;
+}
 
 
 // ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
