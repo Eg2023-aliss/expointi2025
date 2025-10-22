@@ -17,7 +17,7 @@ if (!isset($_SESSION['usuario_id'])) {
 // ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
 $db_config_cloud = [
   'host' => 'aws-1-us-east-2.pooler.supabase.com',
-  $dsn = "pgsql:host=aws-1-us-east-2.pooler.supabase.com;port=6543;dbname=postgres";
+  $dsn = "pgsql:host=aws-1-us-east-2.pooler.supabase.com;port=6543;dbname=postgres",
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
