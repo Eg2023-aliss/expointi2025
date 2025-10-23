@@ -17,68 +17,65 @@ if (!isset($_SESSION['usuario_id'])) {
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
-  'host' => 'aws-1-us-east-2.pooler.supabase.com',
-  'port' => '6543',
-  'dbname' => 'postgres3',
-  'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-  'pass' => 'Zv2sW23OhBVM5Tkz'
+    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+    'port' => '6543',
+    'dbname' => 'postgres3',
+    'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+    'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
-  'host' => '127.0.0.1',  // IPv4 explícita para Docker
-  'port' => '5432',
-  'dbname' => 'postgres',
-  'user' => 'postgres',
-  'pass' => '12345'
+    'host' => '127.0.0.1',  // IPv4 explícita para Docker
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
 ];
 
-// Elegir la conexión según entorno
-$use_local = true;  // Cambia a false si quieres usar la nube
+// ---------- DETERMINAR CONEXIÓN ----------
+// Por defecto usar nube
+$use_local = false;
 
-$db_config = $use_local ? $db_config_local : $db_config_cloud;
+// Función para obtener PDO con fallback automático
+function getPDO($prefer_local = null) {
+    global $db_config_cloud, $db_config_local;
 
-// Conexión PDO
-try {
-    $conn = new PDO(
-        "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
-        $db_config['user'],
-        $db_config['pass']
-    );
-    echo "Conexión exitosa!";
-} catch (PDOException $e) {
-    echo "Error en la conexión: " . $e->getMessage();
-}
+    // Si se especifica, usar local; si no, usar nube primero
+    $primary = $prefer_local ? $db_config_local : $db_config_cloud;
+    $secondary = $prefer_local ? $db_config_cloud : $db_config_local;
 
-// ---------- FUNCIONES ----------
-function getPDO($cfg = null) {
-  global $db_config, $db_config_cloud, $db_config_local;
-  $use = $cfg ?? $db_config;
-
-  try {
-    // Intentar conexión principal (nube)
-    $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']}";
-    $pdo = new PDO($dsn, $use['user'], $use['pass'], [
-      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-    return $pdo;
-  } catch (Exception $e) {
-    error_log("⚠️ Error conexión principal ({$use['host']}): ".$e->getMessage());
-
-    // Intentar conexión secundaria (local)
+    // Intentar conexión primaria
     try {
-      $dsn_local = "pgsql:host={$db_config_local['host']};port={$db_config_local['port']};dbname={$db_config_local['dbname']}";
-      $pdo_local = new PDO($dsn_local, $db_config_local['user'], $db_config_local['pass'], [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-      ]);
-      error_log("✅ Conexión local usada por fallback.");
-      return $pdo_local;
-    } catch (Exception $ex) {
-      error_log("❌ Falla también la conexión local: ".$ex->getMessage());
-      die("Error: no se pudo conectar ni a la nube ni al servidor local.");
+        $dsn = "pgsql:host={$primary['host']};port={$primary['port']};dbname={$primary['dbname']}";
+        $pdo = new PDO($dsn, $primary['user'], $primary['pass'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]);
+        error_log("✅ Conexión exitosa a {$primary['host']}:{$primary['port']}");
+        return $pdo;
+    } catch (Exception $e) {
+        error_log("⚠️ Error conexión primaria ({$primary['host']}): " . $e->getMessage());
+
+        // Intentar conexión secundaria
+        try {
+            $dsn2 = "pgsql:host={$secondary['host']};port={$secondary['port']};dbname={$secondary['dbname']}";
+            $pdo2 = new PDO($dsn2, $secondary['user'], $secondary['pass'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            error_log("✅ Conexión secundaria usada: {$secondary['host']}:{$secondary['port']}");
+            return $pdo2;
+        } catch (Exception $ex) {
+            error_log("❌ Falla también la conexión secundaria: " . $ex->getMessage());
+            die("Error: no se pudo conectar ni a la nube ni al servidor local.");
+        }
     }
-  }
 }
 
+// ---------- USO ----------
+// $pdo = getPDO();             // Usará nube primero
+// $pdo = getPDO(true);         // Forzar conexión local primero
+$pdo = getPDO($use_local);
+
+echo "Conexión establecida con éxito!";
 
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
