@@ -25,7 +25,7 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-  'host' => 'localhost',
+  'host' => '10.0.0.123',
   'port' => '5432',
   'dbname' => 'postgres',
   'user' => 'postgres',
