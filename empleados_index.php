@@ -7,37 +7,63 @@ error_reporting(E_ALL);
 require('fpdf/fpdf.php');
 
 // 🔐 Verificar sesión
-
-
-// ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
-$db_config_cloud = [
-  'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '6543',
-'dbname' => 'postgres',
-'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-'pass' => 'Zv2sW23OhBVM5Tkz'
-];
-
-$db_config_local = [
-     'host' => '10.0.0.123',
-'port' => '5432',
-'dbname' => 'postgres',
-'user' => 'postgres',
-'pass' => '12345'
-];
-
-$db_config = $db_config_local;
-
-function getPDO() {
-  global $db_config;
-  $dsn = "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}";
-  return new PDO($dsn, $db_config['user'], $db_config['pass'], [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-  ]);
+if (!isset($_SESSION['usuario_id'])) {
+  $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http");
+  $baseUrl .= "://".$_SERVER['HTTP_HOST'];
+  header("Location: $baseUrl/login.php");
+  exit;
 }
 
 
-$db_config = $db_config_local;
+// ---------- CONFIGURACIÓN BASES DE DATOS ----------
+$db_config_cloud = [
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
+  'port' => '6543',
+  'dbname' => 'postgres3',
+  'user' => 'postgres.orzsdjjmyouhhxjfnemt',
+  'pass' => 'Zv2sW23OhBVM5Tkz'
+];
+
+$db_config_local = [
+  'host' => 'localhost',
+  'port' => '5432',
+  'dbname' => 'postgres',
+  'user' => 'postgres',
+  'pass' => '12345'
+];
+
+// 🔹 Por defecto, usar conexión de la nube como principal
+$db_config = $db_config_cloud;
+
+// ---------- FUNCIONES ----------
+function getPDO($cfg = null) {
+  global $db_config, $db_config_cloud, $db_config_local;
+  $use = $cfg ?? $db_config;
+
+  try {
+    // Intentar conexión principal (nube)
+    $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']}";
+    $pdo = new PDO($dsn, $use['user'], $use['pass'], [
+      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    return $pdo;
+  } catch (Exception $e) {
+    error_log("⚠️ Error conexión principal ({$use['host']}): ".$e->getMessage());
+
+    // Intentar conexión secundaria (local)
+    try {
+      $dsn_local = "pgsql:host={$db_config_local['host']};port={$db_config_local['port']};dbname={$db_config_local['dbname']}";
+      $pdo_local = new PDO($dsn_local, $db_config_local['user'], $db_config_local['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+      ]);
+      error_log("✅ Conexión local usada por fallback.");
+      return $pdo_local;
+    } catch (Exception $ex) {
+      error_log("❌ Falla también la conexión local: ".$ex->getMessage());
+      die("Error: no se pudo conectar ni a la nube ni al servidor local.");
+    }
+  }
+}
 
 
 
