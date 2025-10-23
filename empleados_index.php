@@ -12,7 +12,7 @@ require('fpdf/fpdf.php');
 // ---------- CONFIGURACIÓN DE BASES DE DATOS ----------
 $db_config_cloud = [
   'host' => 'aws-1-us-east-2.pooler.supabase.com',
-'port' => '5432',
+'port' => '6543',
 'dbname' => 'postgres',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
 'pass' => 'Zv2sW23OhBVM5Tkz'
