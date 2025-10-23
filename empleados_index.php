@@ -25,15 +25,29 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-  'host' => '10.0.0.123',
+  'host' => '127.0.0.1',  // IPv4 explícita para Docker
   'port' => '5432',
   'dbname' => 'postgres',
   'user' => 'postgres',
   'pass' => '12345'
 ];
 
-// 🔹 Por defecto, usar conexión de la nube como principal
-$db_config = $db_config_cloud;
+// Elegir la conexión según entorno
+$use_local = true;  // Cambia a false si quieres usar la nube
+
+$db_config = $use_local ? $db_config_local : $db_config_cloud;
+
+// Conexión PDO
+try {
+    $conn = new PDO(
+        "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
+        $db_config['user'],
+        $db_config['pass']
+    );
+    echo "Conexión exitosa!";
+} catch (PDOException $e) {
+    echo "Error en la conexión: " . $e->getMessage();
+}
 
 // ---------- FUNCIONES ----------
 function getPDO($cfg = null) {
