@@ -1,4 +1,10 @@
 <?php
+session_start();
+ob_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+require('fpdf/fpdf.php');
 require_once 'conexion.php';  // ✅ Importar conexión
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
