@@ -33,17 +33,23 @@ $db_config_local = [
 ];
 
 // Aquí decides cuál usar
-// En Render: usar $db_config_cloud
-$db_config = $db_config_cloud;
+$db_config = [
+    'host' => '192.168.1.24',
+    'port' => '5432',
+    'dbname' => 'postgres',
+    'user' => 'postgres',
+    'pass' => '12345'
+];
 
 try {
+    // Crear conexión PDO
     $pdo = new PDO(
         "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
         $db_config['user'],
         $db_config['pass']
     );
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "Conexión exitosa a la base de datos!";
+    echo "Conexión exitosa a PostgreSQL!";
 } catch (PDOException $e) {
     echo "Error en la conexión: " . $e->getMessage();
 }
