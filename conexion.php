@@ -19,36 +19,66 @@ $db_config_cloud = [
 
 // Configuración local
 $db_config_local = [
-    'host' => '127.0.0.1', // Mejor usar IP en vez de localhost
+    'host' => '', // Se detectará automáticamente
     'port' => '5432',
     'dbname' => 'postgres',
     'user' => 'postgres',
     'pass' => '12345'
 ];
 
-// ---------- FUNCIÓN PARA VERIFICAR CONEXIÓN TCP ----------
-function isHostReachable($host, $port, $timeout = 2) {
-    $fp = @fsockopen($host, $port, $errCode, $errStr, $timeout);
+// ---------- FUNCIÓN PARA DETECTAR IP LOCAL ----------
+
+function detectLocalPostgresHost() {
+    // Si PHP está en la misma máquina que PostgreSQL
+    $localHosts = ['127.0.0.1', 'localhost'];
+    foreach ($localHosts as $host) {
+        $fp = @fsockopen($host, 5432, $errCode, $errStr, 1);
+        if ($fp) {
+            fclose($fp);
+            return $host;
+        }
+    }
+
+    // Si está en otra máquina o contenedor, prueba la IP de red
+    $networkHost = '192.168.1.24'; // Ajusta según tu red si es necesario
+    $fp = @fsockopen($networkHost, 5432, $errCode, $errStr, 2);
     if ($fp) {
         fclose($fp);
-        return true;
+        return $networkHost;
     }
-    return false;
+
+    // Si todo falla, retorna null
+    return null;
 }
 
+// Detectar host local automáticamente
+$db_config_local['host'] = detectLocalPostgresHost();
+
 // ---------- FUNCIÓN PARA OBTENER PDO CON FALLBACK ----------
+
 function getPDO() {
     global $db_config_local, $db_config_cloud;
 
-    // Lista de intentos: primero local, luego nube
-    $attempts = [$db_config_local, $db_config_cloud];
+    $attempts = [];
+
+    if (!empty($db_config_local['host'])) {
+        $attempts[] = $db_config_local;
+    } else {
+        error_log("⚠️ No se detectó host local PostgreSQL, se saltará al intento nube");
+    }
+
+    $attempts[] = $db_config_cloud;
 
     foreach ($attempts as $cfg) {
-        if (!isHostReachable($cfg['host'], $cfg['port'], 3)) {
-            error_log("⚠️ Host {$cfg['host']}:{$cfg['port']} no accesible, saltando...");
+        // Verificar TCP
+        $fp = @fsockopen($cfg['host'], $cfg['port'], $errCode, $errStr, 2);
+        if (!$fp) {
+            error_log("⚠️ Host {$cfg['host']}:{$cfg['port']} no accesible: $errStr ($errCode)");
             continue;
         }
+        fclose($fp);
 
+        // Intento de conexión PDO
         try {
             $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}";
             $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
@@ -67,4 +97,3 @@ function getPDO() {
 
 // ---------- USO ----------
 $pdo = getPDO();
-?>
