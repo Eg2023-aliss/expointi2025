@@ -1,5 +1,5 @@
 <?php
-$hosts = ['127.0.0.1', '192.168.1.24', 'aws-1-us-east-2.pooler.supabase.com'];
+$hosts = ['127.0.0.1', '192.168.1.24'];
 $port = 5432;
 
 foreach ($hosts as $host) {
