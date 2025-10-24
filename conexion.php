@@ -35,15 +35,17 @@ function getPDO() {
     }
 
     try {
-        $dsn = "pgsql:host={$db_config_cloud['host']};port={$db_config_cloud['port']};dbname={$db_config_cloud['dbname']};sslmode={$db_config_cloud['sslmode']}";
-        $pdo = new PDO($dsn, $db_config_cloud['user'], $db_config_cloud['pass'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]);
-        echo "✅ Conexión establecida con éxito a la nube ({$db_config_cloud['host']})<br>";
-        return $pdo;
-    } catch (PDOException $e) {
-        die("❌ Error PDO: " . $e->getMessage());
-    }
+    $pdo = new PDO(
+        "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
+        $db_config['user'],
+        $db_config['pass']
+    );
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "Conexión exitosa a la base de datos en la nube!";
+} catch (PDOException $e) {
+    echo "❌ Error: No se puede conectar a la base de datos en la nube. " . $e->getMessage();
+}
+
 }
 
 // Uso
