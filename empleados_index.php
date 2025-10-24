@@ -8,9 +8,10 @@ require('fpdf/fpdf.php');
 
 // 🔐 Verificar sesión
 if (!isset($_SESSION['usuario_id'])) {
-  header("Location: localhost/login.php");
+  header("Location: login.php");
   exit;
 }
+
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
