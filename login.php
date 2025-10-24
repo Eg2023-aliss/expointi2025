@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($row['password'] === $password) {
           $_SESSION['usuario_id'] = $row['id'];
           $_SESSION['usuario'] = $row['username'];
-          header("Location: empleados_index.php");
+          header("https://expointi2025.onrender.com/empleados_index.php");
           exit;
         } else {
           $error = "Usuario o contraseña incorrectos";
