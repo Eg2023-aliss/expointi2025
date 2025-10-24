@@ -81,6 +81,7 @@ function fetchCurriculumById($id_empleado) {
   return false;
 }
 
+$pdo = getPDO();
 
 //
 // ---------- CONSULTAR EMPLEADOS ----------
