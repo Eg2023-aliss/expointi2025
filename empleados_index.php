@@ -49,7 +49,7 @@ function runBoth($callback) {
         exit;
     }
 }--
-$pdo = getPDO();
+
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
