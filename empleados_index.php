@@ -88,7 +88,7 @@ function getPDO($prefer_local = null) {
 // ---------- USO ----------
 // $pdo = getPDO();             // Usará nube primero
 // $pdo = getPDO(true);         // Forzar conexión local primero
-$pdo = getPDO($use_local);
+$pdo = getPDO($db_config_cloud );
 
 echo "Conexión establecida con éxito!";
 
