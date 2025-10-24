@@ -14,6 +14,8 @@ if (!isset($_SESSION['usuario_id'])) {
 
 
 // ---------- CONFIGURACIÓN BASES DE DATOS ----------
+
+// Configuración de bases de datos
 $db_config_cloud = [
     'host' => 'aws-1-us-east-2.pooler.supabase.com',
     'port' => '6543',
@@ -23,16 +25,29 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-    'host' => 'localhost',  // IPv4 explícita para Docker
+    'host' => 'localhost',
     'port' => '5432',
     'dbname' => 'postgres',
     'user' => 'postgres',
     'pass' => '12345'
 ];
 
-// ---------- DETERMINAR CONEXIÓN ----------
-// Por defecto usar nube
-$use_local = false;
+// Aquí decides cuál usar
+// En Render: usar $db_config_cloud
+$db_config = $db_config_cloud;
+
+try {
+    $pdo = new PDO(
+        "pgsql:host={$db_config['host']};port={$db_config['port']};dbname={$db_config['dbname']}",
+        $db_config['user'],
+        $db_config['pass']
+    );
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "Conexión exitosa a la base de datos!";
+} catch (PDOException $e) {
+    echo "Error en la conexión: " . $e->getMessage();
+}
+
 
 // Función para obtener PDO con fallback automático
 function getPDO($prefer_local = null) {
