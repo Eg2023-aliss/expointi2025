@@ -4,12 +4,12 @@
 function getPDO() {
     $configs = [
         [
-            'host' => 'localhost',
-            'port' => '5432',
-            'dbname' => 'postgres',
-            'user' => 'postgres',
-            'pass' => 'tu_password_local'
-        ],
+'host' => 'localhost',
+'port' => '5432',
+'dbname' => 'postgres',
+'user' => 'postgres',
+'pass' => '12345'
+];
         [
             'host' => 'aws-1-us-east-2.pooler.supabase.com',
             'port' => '6543',
