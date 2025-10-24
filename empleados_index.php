@@ -23,7 +23,7 @@ $db_config_cloud = [
 ];
 
 $db_config_local = [
-    'host' => '127.0.0.1',  // IPv4 explícita para Docker
+    'host' => 'localhost',  // IPv4 explícita para Docker
     'port' => '5432',
     'dbname' => 'postgres',
     'user' => 'postgres',
