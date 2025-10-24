@@ -14,8 +14,7 @@ $db_config_cloud = [
     'port' => '6543',
     'dbname' => 'postgres3',
     'user' => 'postgres.orzsdjjmyouhhxjfnemt',
-    'pass' => 'Zv2sW23OhBVM5Tkz',
-    'sslmode' => 'require' // SSL para nube
+    'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 // Configuración local
@@ -24,35 +23,38 @@ $db_config_local = [
     'port' => '5432',
     'dbname' => 'postgres',
     'user' => 'postgres',
-    'pass' => '12345',
-    'sslmode' => 'disable' // Local normalmente no usa SSL
+    'pass' => '12345'
 ];
 
-// ---------- FUNCIÓN PARA DETECTAR HOST LOCAL ----------
+// ---------- FUNCIÓN PARA DETECTAR IP LOCAL ----------
 
-function detectLocalPostgresHost($ports = [5432]) {
+function detectLocalPostgresHost() {
+    // Si PHP está en la misma máquina que PostgreSQL
     $localHosts = ['127.0.0.1', 'localhost'];
     foreach ($localHosts as $host) {
-        foreach ($ports as $port) {
-            $fp = @fsockopen($host, $port, $errCode, $errStr, 1);
-            if ($fp) { fclose($fp); return $host; }
+        $fp = @fsockopen($host, 5432, $errCode, $errStr, 1);
+        if ($fp) {
+            fclose($fp);
+            return $host;
         }
     }
 
-    // Prueba IP de red local (ajustar según tu red)
-    $networkHost = '192.168.1.24';
-    foreach ($ports as $port) {
-        $fp = @fsockopen($networkHost, $port, $errCode, $errStr, 2);
-        if ($fp) { fclose($fp); return $networkHost; }
+    // Si está en otra máquina o contenedor, prueba la IP de red
+    $networkHost = '192.168.1.24'; // Ajusta según tu red si es necesario
+    $fp = @fsockopen($networkHost, 5432, $errCode, $errStr, 2);
+    if ($fp) {
+        fclose($fp);
+        return $networkHost;
     }
 
-    return null; // No detectado
+    // Si todo falla, retorna null
+    return null;
 }
 
 // Detectar host local automáticamente
 $db_config_local['host'] = detectLocalPostgresHost();
 
-// ---------- FUNCIÓN PARA OBTENER PDO CON FALLBACK Y SSL ----------
+// ---------- FUNCIÓN PARA OBTENER PDO CON FALLBACK ----------
 
 function getPDO() {
     global $db_config_local, $db_config_cloud;
@@ -76,9 +78,9 @@ function getPDO() {
         }
         fclose($fp);
 
-        // Intento de conexión PDO con SSLmode
+        // Intento de conexión PDO
         try {
-            $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']};sslmode={$cfg['sslmode']}";
+            $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}";
             $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
             ]);
@@ -95,3 +97,4 @@ function getPDO() {
 
 // ---------- USO ----------
 $pdo = getPDO();
+?>
