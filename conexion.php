@@ -1,5 +1,5 @@
 <?php
-$host = '192.168.1.24';
+$host ='localhost';
 $port = 5432;
 $timeout = 5;
 
@@ -11,3 +11,4 @@ if ($fp = @fsockopen($host, $port, $errCode, $errStr, $timeout)) {
     echo "❌ PHP NO puede conectarse a $host:$port. Error: $errStr ($errCode)";
 }
 echo "\nTiempo: " . (microtime(true) - $start) . "s";
+?>
