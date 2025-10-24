@@ -1,55 +1,60 @@
-
 <?php
 session_start();
 ob_start();
 ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require('fpdf/fpdf.php');
 
-// 🔹 Configuración de conexiones
+// 🔐 Verificar sesión
+if (!isset($_SESSION['usuario_id'])) {
+  header("Location: localhost/login.php");
+  exit;
+}
+
+// ---------- CONFIGURACIÓN BASES DE DATOS ----------
 $db_config_cloud = [
-    'host' => 'aws-1-us-east-2.pooler.supabase.com',
+  'host' => 'aws-1-us-east-2.pooler.supabase.com',
 'port' => '5432',
-'dbname' => 'postgres',
+'dbname' => 'postgres3',
 'user' => 'postgres.orzsdjjmyouhhxjfnemt',
 'pass' => 'Zv2sW23OhBVM5Tkz'
 ];
 
 $db_config_local = [
-        'host' => 'localhost',
+      'host' => 'localhost',
 'port' => '5432',
 'dbname' => 'postgres',
 'user' => 'postgres',
 'pass' => '12345'
 ];
 
-// 🔹 Función para conectarse a PostgreSQL (local o cloud)
+$db_config = $db_config_local;
+
+// ---------- FUNCIONES ----------
 function getPDO($cfg = null) {
-    $ssl = '';
-    if (str_contains($cfg['host'], 'supabase.com')) {
-        $ssl = ';sslmode=require';
-    }
-    $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}{$ssl}";
-    return new PDO($dsn, $cfg['user'], $cfg['pass'], [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-    ]);
+  // Si se pasa $cfg, úsalo; si no, usa $db_config global
+  global $db_config;
+  $use = $cfg ?? $db_config;
+  $dsn = "pgsql:host={$use['host']};port={$use['port']};dbname={$use['dbname']}";
+  return new PDO($dsn, $use['user'], $use['pass'], [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+  ]);
 }
 
-// 🔹 Función para ejecutar en ambas BD
 function runBoth($callback) {
-    global $db_config_local, $db_config_cloud;
-    try {
-        $pdoLocal = getPDO($db_config_local);
-        $pdoCloud = getPDO($db_config_cloud);
-        $callback($pdoLocal);
-        $callback($pdoCloud);
-    } catch (Exception $e) {
-        echo "<script>alert('⚠️ Error al registrar: ".$e->getMessage()."');</script>";
-        exit;
-    }
-}--
-
+  global $db_config_local, $db_config_cloud;
+  $results = [];
+  try {
+    $pdoL = getPDO($db_config_local);
+    $pdoC = getPDO($db_config_cloud);
+    $results[] = $callback($pdoL);
+    $results[] = $callback($pdoC);
+  } catch (Exception $e) {
+    error_log("Error runBoth: " . $e->getMessage());
+  }
+  return $results[0] ?? null;
+}
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
