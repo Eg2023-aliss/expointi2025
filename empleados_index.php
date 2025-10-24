@@ -19,60 +19,84 @@ $db_config_cloud = [
 
 // Configuración local
 $db_config_local = [
-    'host' => '192.168.1.24',
+    'host' => '', // Se detectará automáticamente
     'port' => '5432',
     'dbname' => 'postgres',
     'user' => 'postgres',
     'pass' => '12345'
 ];
 
-// ---------- FUNCIÓN PARA OBTENER PDO CON FALLBACK ----------
+// ---------- FUNCIÓN PARA DETECTAR IP LOCAL ----------
 
-/**
- * Retorna un objeto PDO conectado a la base de datos.
- * @param bool $prefer_local Si true intenta primero local, si false primero nube.
- * @return PDO
- */
-function getPDO($prefer_local = false) {
-    global $db_config_cloud, $db_config_local;
-
-    $primary = $prefer_local ? $db_config_local : $db_config_cloud;
-    $secondary = $prefer_local ? $db_config_cloud : $db_config_local;
-
-    // Intento de conexión primaria
-    try {
-        $dsn = "pgsql:host={$primary['host']};port={$primary['port']};dbname={$primary['dbname']}";
-        $pdo = new PDO($dsn, $primary['user'], $primary['pass'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-        ]);
-        error_log("✅ Conexión exitosa a {$primary['host']}:{$primary['port']}");
-        return $pdo;
-    } catch (Exception $e) {
-        error_log("⚠️ Error conexión primaria ({$primary['host']}): " . $e->getMessage());
-
-        // Intento de conexión secundaria
-        try {
-            $dsn2 = "pgsql:host={$secondary['host']};port={$secondary['port']};dbname={$secondary['dbname']}";
-            $pdo2 = new PDO($dsn2, $secondary['user'], $secondary['pass'], [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
-            error_log("✅ Conexión secundaria usada: {$secondary['host']}:{$secondary['port']}");
-            return $pdo2;
-        } catch (Exception $ex) {
-            error_log("❌ Falla también la conexión secundaria: " . $ex->getMessage());
-            die("Error: no se pudo conectar ni a la nube ni al servidor local.");
+function detectLocalPostgresHost() {
+    // Si PHP está en la misma máquina que PostgreSQL
+    $localHosts = ['127.0.0.1', 'localhost'];
+    foreach ($localHosts as $host) {
+        $fp = @fsockopen($host, 5432, $errCode, $errStr, 1);
+        if ($fp) {
+            fclose($fp);
+            return $host;
         }
     }
+
+    // Si está en otra máquina o contenedor, prueba la IP de red
+    $networkHost = '192.168.1.24'; // Ajusta según tu red si es necesario
+    $fp = @fsockopen($networkHost, 5432, $errCode, $errStr, 2);
+    if ($fp) {
+        fclose($fp);
+        return $networkHost;
+    }
+
+    // Si todo falla, retorna null
+    return null;
+}
+
+// Detectar host local automáticamente
+$db_config_local['host'] = detectLocalPostgresHost();
+
+// ---------- FUNCIÓN PARA OBTENER PDO CON FALLBACK ----------
+
+function getPDO() {
+    global $db_config_local, $db_config_cloud;
+
+    $attempts = [];
+
+    if (!empty($db_config_local['host'])) {
+        $attempts[] = $db_config_local;
+    } else {
+        error_log("⚠️ No se detectó host local PostgreSQL, se saltará al intento nube");
+    }
+
+    $attempts[] = $db_config_cloud;
+
+    foreach ($attempts as $cfg) {
+        // Verificar TCP
+        $fp = @fsockopen($cfg['host'], $cfg['port'], $errCode, $errStr, 2);
+        if (!$fp) {
+            error_log("⚠️ Host {$cfg['host']}:{$cfg['port']} no accesible: $errStr ($errCode)");
+            continue;
+        }
+        fclose($fp);
+
+        // Intento de conexión PDO
+        try {
+            $dsn = "pgsql:host={$cfg['host']};port={$cfg['port']};dbname={$cfg['dbname']}";
+            $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            error_log("✅ Conexión exitosa a {$cfg['host']}:{$cfg['port']}");
+            echo "Conexión establecida con éxito a {$cfg['host']}:{$cfg['port']}<br>";
+            return $pdo;
+        } catch (PDOException $e) {
+            error_log("⚠️ Error PDO en {$cfg['host']}: {$e->getMessage()}");
+        }
+    }
+
+    die("❌ Error: no se pudo conectar ni a la base local ni a la nube.");
 }
 
 // ---------- USO ----------
-
-// Conectar primero a local
-$pdo = getPDO(true);  
-
-echo "Conexión establecida con éxito!";
-
-
+$pdo = getPDO();
 
 // Helper: obtiene curriculum probando local y luego cloud si no existe local
 function fetchCurriculumById($id_empleado) {
