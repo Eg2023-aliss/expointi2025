@@ -1,5 +1,4 @@
 <?php
-
 // conexion.php — solo conexión, sin HTML ni consultas
 
 function getPDO() {
