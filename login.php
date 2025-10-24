@@ -210,7 +210,8 @@ form button:hover {
 <input type="text" name="user" placeholder="Nombre de usuario o correo" required>
 <input type="password" name="password" placeholder="Contraseña" required>
 <button type="submit">Iniciar sesión</button>
-<button type="button" onclick="window.location.href='http://localhost/prueba_doble_conexion.php'">
+<button type="button" onclick="window.location.href='header("Location: login.php">
+
 Registrar nuevo encargado
 </button>
 </form>
