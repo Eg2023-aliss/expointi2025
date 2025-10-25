@@ -9,10 +9,7 @@ require('fpdf/fpdf.php');
 require_once 'conexion.php';
 
 // 🔐 Verificar sesión
-if (!isset($_SESSION['usuario_id'])) {
-  header("Location: login.php");
-  exit;
-}
+
 
 // ---------- OBTENER DATOS ----------
 try {
